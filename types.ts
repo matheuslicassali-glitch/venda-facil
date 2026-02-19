@@ -171,4 +171,4 @@ export interface CompanySettings {
   };
 }
 
-export type View = 'login' | 'dashboard' | 'produtos' | 'pdv' | 'relatorios' | 'nfe' | 'fornecedores' | 'funcionarios' | 'estoque' | 'clientes' | 'caixa' | 'financeiro' | 'configuracoes' | 'venda_comum';
+export type View = 'login' | 'dashboard' | 'produtos' | 'pdv' | 'relatorios' | 'nfe' | 'fornecedores' | 'funcionarios' | 'estoque' | 'clientes' | 'caixa' | 'financeiro' | 'configuracoes' | 'venda_comum' | 'nfe_manual';

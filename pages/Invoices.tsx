@@ -141,8 +141,7 @@ const Invoices: React.FC = () => {
           <div className="flex items-center gap-1">
             <Button onClick={() => window.dispatchEvent(new CustomEvent('navigate', { detail: 'pdv' }))} className="bg-blue-600 rounded-r-none">
               NFC-e (PDV)
-            </Button>
-            <Button onClick={() => alert('Emissão Manual de NF-e (Modelo 55) em desenvolvimento')} className="bg-indigo-600 rounded-l-none">
+            </Button>            <Button onClick={() => window.dispatchEvent(new CustomEvent('navigate', { detail: 'nfe_manual' }))} className="bg-indigo-600 rounded-l-none">
               NF-e
             </Button>
           </div>

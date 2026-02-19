@@ -15,6 +15,7 @@ import Cashier from './pages/Cashier';
 import Finance from './pages/Finance';
 import Settings from './pages/Settings';
 import CommonSales from './pages/CommonSales';
+import NFeManual from './pages/NFeManual';
 import { View } from './types';
 import { Toast } from './components/ui/Toast';
 // Fix: Import missing Button component
@@ -80,6 +81,7 @@ const App: React.FC = () => {
       case 'financeiro': return <Finance onNotify={showToast} />;
       case 'configuracoes': return <Settings onNotify={showToast} />;
       case 'venda_comum': return <CommonSales />;
+      case 'nfe_manual': return <NFeManual onNotify={showToast} />;
       default: return (
         <div className="flex flex-col items-center justify-center py-20 text-center animate-in fade-in">
           <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center mb-4 text-gray-400">
