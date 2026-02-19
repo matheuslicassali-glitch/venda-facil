@@ -231,6 +231,53 @@ const Settings: React.FC<{ onNotify: (msg: string, type: 'success' | 'error') =>
                                 </label>
                             </div>
                         </div>
+
+                        {/* Certificado Digital */}
+                        <div className="mt-8 border-t pt-6">
+                            <h3 className="text-sm font-black text-gray-700 uppercase tracking-widest mb-4">Certificado Digital (A1)</h3>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Arquivo .pfx / .p12</label>
+                                    <div className="relative">
+                                        <input
+                                            type="file"
+                                            accept=".pfx,.p12"
+                                            className="hidden"
+                                            id="cert-upload"
+                                            onChange={e => {
+                                                const file = e.target.files?.[0];
+                                                if (file) {
+                                                    setSettings({
+                                                        ...settings,
+                                                        fiscal: {
+                                                            ...settings.fiscal,
+                                                            certificado_nome: file.name,
+                                                            certificado_pfx: 'BASE64_MOCK_DATA'
+                                                        }
+                                                    });
+                                                }
+                                            }}
+                                        />
+                                        <label
+                                            htmlFor="cert-upload"
+                                            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-50 border border-gray-200 border-dashed rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
+                                        >
+                                            <FileText size={18} className="text-gray-400" />
+                                            <span className="text-sm font-medium text-gray-600">
+                                                {settings.fiscal.certificado_nome || 'Selecionar certificado A1'}
+                                            </span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <Input
+                                    label="Senha do Certificado"
+                                    type="password"
+                                    placeholder="Senha de exportação"
+                                    value={settings.fiscal.certificado_senha || ''}
+                                    onChange={e => setSettings({ ...settings, fiscal: { ...settings.fiscal, certificado_senha: e.target.value } })}
+                                />
+                            </div>
+                        </div>
                     </div>
                 </section>
 

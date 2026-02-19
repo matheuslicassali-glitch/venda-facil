@@ -19,13 +19,59 @@ const CommonSales: React.FC = () => {
 
     const handlePrint = () => {
         const printContent = printRef.current;
-        const windowPrint = window.open('', '', 'width=900,height=650');
+        const windowPrint = window.open('', '', 'width=400,height=600');
         if (windowPrint && printContent) {
-            windowPrint.document.write('<html><head><title>Nota de Venda</title>');
-            windowPrint.document.write('<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">');
-            windowPrint.document.write('</head><body>');
-            windowPrint.document.write(printContent.innerHTML);
-            windowPrint.document.write('</body></html>');
+            windowPrint.document.write(`
+        <html>
+          <head>
+            <title>Impressão de Cupom</title>
+            <style>
+              @page { size: 80mm auto; margin: 0; }
+              body { 
+                width: 80mm; 
+                margin: 0; 
+                padding: 10px; 
+                font-family: 'Courier New', Courier, monospace; 
+                font-size: 12px;
+                color: #000;
+              }
+              .receipt-container { width: 100%; }
+              .text-center { text-align: center; }
+              .text-right { text-align: right; }
+              .font-black { font-weight: bold; }
+              .uppercase { text-transform: uppercase; }
+              .border-dashed { border-bottom: 1px dashed #000; }
+              .my-2 { margin-top: 8px; margin-bottom: 8px; }
+              .grid { display: grid; }
+              .grid-cols-2 { grid-template-columns: 1fr 1fr; }
+              .grid-cols-12 { grid-template-columns: repeat(12, 1fr); }
+              .col-span-2 { grid-column: span 2; }
+              .col-span-3 { grid-column: span 3; }
+              .col-span-5 { grid-column: span 5; }
+              .leading-tight { line-height: 1.2; }
+              .text-lg { font-size: 14px; }
+              .text-xl { font-size: 16px; }
+              .text-2xl { font-size: 20px; }
+              .space-y-1 > * + * { margin-top: 4px; }
+              table { width: 100%; border-collapse: collapse; }
+              .flex { display: flex; }
+              .justify-between { justify-content: space-between; }
+              .items-center { align-items: center; }
+              .w-40 { width: 160px; }
+              .break-all { word-break: break-all; }
+              @media print {
+                body { margin: 0; padding: 5mm; }
+                button { display: none; }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="receipt-container">
+              ${printContent.innerHTML}
+            </div>
+          </body>
+        </html>
+      `);
             windowPrint.document.close();
             windowPrint.focus();
             setTimeout(() => {
@@ -45,111 +91,81 @@ const CommonSales: React.FC = () => {
             <div className="animate-in slide-in-from-right duration-500 max-w-4xl mx-auto">
                 <div className="flex items-center justify-between mb-8">
                     <Button variant="ghost" onClick={() => setSelectedSale(null)} className="flex items-center gap-2">
-                        <ArrowLeft size={18} /> Voltar para a lista
+                        <ArrowLeft size={18} /> Voltar
                     </Button>
-                    <Button onClick={handlePrint} className="flex items-center gap-2 bg-green-600 hover:bg-green-700">
-                        <Printer size={18} /> Imprimir Nota de Venda
+                    <Button onClick={handlePrint} className="flex items-center gap-2 bg-blue-600">
+                        <Printer size={18} /> Imprimir na Epson T20
                     </Button>
                 </div>
 
-                {/* Receipt Container for Printing */}
-                <div ref={printRef} className="bg-white p-10 rounded-xl shadow-lg border border-gray-100 font-sans text-gray-800">
-                    {/* Header */}
-                    <div className="flex justify-between items-start border-b-2 border-gray-100 pb-8 mb-8">
-                        <div className="space-y-2">
-                            <h2 className="text-3xl font-black text-blue-700 tracking-tighter uppercase">{company?.nome_fantasia || 'VENDA FÁCIL'}</h2>
-                            <div className="text-sm font-bold text-gray-500 space-y-1">
-                                <p className="flex items-center gap-2"><Building2 size={14} /> {company?.razao_social || 'Empresa de Teste LTDA'}</p>
-                                <p>CNPJ: {company?.cnpj || '00.000.000/0000-00'} | IE: {company?.inscricao_estadual || 'ISENTO'}</p>
-                                <p>{company?.endereco.logradouro}, {company?.endereco.numero} - {company?.endereco.bairro}</p>
-                                <p>{company?.endereco.cidade} - {company?.endereco.uf} | CEP: {company?.endereco.cep}</p>
-                            </div>
-                        </div>
-                        <div className="text-right">
-                            <div className="bg-blue-50 px-4 py-2 rounded-lg inline-block mb-2">
-                                <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest block">Documento Não Fiscal</span>
-                                <span className="text-xl font-black text-blue-700">NOTA Nº {selectedSale.nfe_numero || selectedSale.id.slice(0, 6)}</span>
-                            </div>
-                            <p className="text-xs font-bold text-gray-400 mt-1 flex items-center justify-end gap-1">
-                                <Calendar size={12} /> {new Date(selectedSale.data_venda).toLocaleString('pt-BR')}
-                            </p>
+                <div ref={printRef} className="bg-white p-6 border mx-auto font-mono text-gray-900 leading-tight w-[320px]">
+                    <div className="text-center space-y-1 mb-4">
+                        <h2 className="text-lg font-bold uppercase">{company?.nome_fantasia || 'VENDA FÁCIL LTDA'}</h2>
+                        <p className="text-[10px] uppercase">{company?.endereco.logradouro}, {company?.endereco.numero}</p>
+                        <p className="text-[10px] uppercase">{company?.endereco.cidade} - {company?.endereco.uf}</p>
+                        <div className="text-[10px] mt-2 border-t border-b border-dashed py-1">
+                            <p>CNPJ: {company?.cnpj || '00.000.000/0000-00'}</p>
+                            <p>IE: {company?.inscricao_estadual || 'ISENTO'}</p>
+                            <p>IM: 08641569  -  {new Date(selectedSale.data_venda).toLocaleDateString()} {new Date(selectedSale.data_venda).toLocaleTimeString()}</p>
                         </div>
                     </div>
 
-                    {/* Client Info */}
-                    <div className="mb-8 p-4 bg-gray-50 rounded-xl border border-gray-100">
-                        <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                            <User size={14} className="text-blue-500" /> Identificação do Cliente
+                    <div className="text-center mb-4 border-b border-dashed pb-1">
+                        <h3 className="text-sm font-bold uppercase">
+                            {selectedSale.xml ? 'Cupom Fiscal NFC-e' : 'Cupom Não Fiscal'}
                         </h3>
-                        {selectedSale.cliente_id ? (
-                            <div className="grid grid-cols-2 gap-4 text-sm">
-                                <div>
-                                    <p className="text-[10px] font-black text-gray-400 uppercase">Nome / Razão Social</p>
-                                    <p className="font-bold text-gray-700">CLIENTE IDENTIFICADO (ID: {selectedSale.cliente_id})</p>
-                                </div>
-                                <div>
-                                    <p className="text-[10px] font-black text-gray-400 uppercase">Documento</p>
-                                    <p className="font-bold text-gray-700">CPF/CNPJ NÃO INFORMADO</p>
-                                </div>
-                            </div>
-                        ) : (
-                            <p className="font-bold text-gray-500 italic">CONSUMIDOR FINAL (NÃO IDENTIFICADO)</p>
-                        )}
                     </div>
 
-                    {/* Items Table */}
-                    <table className="w-full mb-8">
-                        <thead>
-                            <tr className="border-b-2 border-gray-100 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                <th className="py-3 text-left">CÓDIGO</th>
-                                <th className="py-3 text-left">DESCRIÇÃO DOS PRODUTOS</th>
-                                <th className="py-3 text-center">QTD</th>
-                                <th className="py-3 text-right">UN</th>
-                                <th className="py-3 text-right">PREÇO UNIT.</th>
-                                <th className="py-3 text-right">TOTAL BRUTO</th>
-                            </tr>
-                        </thead>
-                        <tbody className="text-sm">
-                            {selectedSale.itens.map((item, idx) => (
-                                <tr key={idx} className="border-b border-gray-50 group">
-                                    <td className="py-4 font-mono text-xs text-gray-400">{item.produto_id.slice(0, 8)}</td>
-                                    <td className="py-4 font-bold text-gray-700">{item.nome}</td>
-                                    <td className="py-4 text-center font-black">{item.quantidade}</td>
-                                    <td className="py-4 text-right uppercase text-xs font-bold text-gray-400">un</td>
-                                    <td className="py-4 text-right font-medium">R$ {item.preco_unitario.toFixed(2)}</td>
-                                    <td className="py-4 text-right font-black">R$ {item.subtotal.toFixed(2)}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                    <div className="grid grid-cols-12 text-[9px] font-bold border-b border-dashed pb-1 mb-2">
+                        <div className="col-span-2">ITEM</div>
+                        <div className="col-span-2">CÓD</div>
+                        <div className="col-span-5">DESC</div>
+                        <div className="col-span-3 text-right">VALOR</div>
+                    </div>
 
-                    {/* Totals Section */}
-                    <div className="flex justify-end pt-4 border-t-2 border-gray-100 border-dashed">
-                        <div className="w-64 space-y-3">
-                            <div className="flex justify-between text-xs font-bold text-gray-400 uppercase">
-                                <span>Subtotal Itens</span>
-                                <span>R$ {(selectedSale.valor_total + (selectedSale.desconto_total || 0)).toFixed(2)}</span>
+                    <div className="space-y-1 mb-4">
+                        {selectedSale.itens.map((item, idx) => (
+                            <div key={idx} className="grid grid-cols-12 text-[9px] leading-none">
+                                <div className="col-span-2">{String(idx + 1).padStart(3, '0')}</div>
+                                <div className="col-span-2">{item.produto_id.slice(0, 4)}</div>
+                                <div className="col-span-5 uppercase">{item.nome}</div>
+                                <div className="col-span-3 text-right">{item.subtotal.toFixed(2)}</div>
+                                <div className="col-span-12 text-[8px] text-gray-500 pl-4">
+                                    {item.quantidade} UN X {item.preco_unitario.toFixed(2)}
+                                </div>
                             </div>
-                            <div className="flex justify-between text-xs font-bold text-orange-600 uppercase">
-                                <span>Desconto Total</span>
-                                <span>- R$ {(selectedSale.desconto_total || 0).toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between items-end pt-3 border-t border-gray-100">
-                                <span className="text-sm font-black text-gray-800 uppercase">Vlr. Total Líquido</span>
-                                <span className="text-3xl font-black text-blue-700 tracking-tighter">R$ {selectedSale.valor_total.toFixed(2)}</span>
-                            </div>
-                            <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                                <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1 flex items-center gap-1">
-                                    <Tag size={10} /> Forma de Pagamento
-                                </p>
-                                <p className="text-sm font-black text-blue-800 uppercase">{selectedSale.tipo_pagamento.replace('_', ' ')}</p>
-                            </div>
+                        ))}
+                    </div>
+
+                    <div className="border-t border-dashed pt-2 space-y-1">
+                        <div className="flex justify-between text-xs font-bold">
+                            <span className="uppercase">Total R$</span>
+                            <span className="text-lg">{selectedSale.valor_total.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-[10px] uppercase">
+                            <span>{selectedSale.tipo_pagamento.replace('_', ' ')}</span>
+                            <span>R$ {selectedSale.valor_total.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-[10px] uppercase">
+                            <span>Troco</span>
+                            <span>R$ 0,00</span>
                         </div>
                     </div>
 
-                    <div className="mt-12 text-center text-[10px] font-bold text-gray-300 uppercase tracking-[0.2em] border-t pt-8">
-                        <p>OBRIGADO POR COMPRAR CONOSCO - VENDA FÁCIL SISTEMAS</p>
-                        <p className="mt-1 italic">Este documento não possui valor fiscal para fins de crédito de ICMS.</p>
+                    <div className="mt-4 pt-4 border-t border-dashed text-[9px] uppercase space-y-1 text-center font-bold text-gray-600">
+                        {selectedSale.chave_acesso ? (
+                            <>
+                                <p className="break-all font-normal">Chave de Acesso:</p>
+                                <p className="break-all font-bold">{selectedSale.chave_acesso.match(/.{1,4}/g)?.join(' ')}</p>
+                                <p className="mt-2">Protocolo: 135240008745214</p>
+                            </>
+                        ) : (
+                            <p>*** DOCUMENTO SEM VALOR FISCAL ***</p>
+                        )}
+                        <div className="mt-4 opacity-50 font-normal">
+                            <p>VENDA FACIL SFT - BEMATECH MP-40 / EPSON T20</p>
+                            <p>{new Date(selectedSale.data_venda).toLocaleString('pt-BR')}</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -159,8 +175,8 @@ const CommonSales: React.FC = () => {
     return (
         <div className="animate-in fade-in duration-500">
             <header className="mb-8">
-                <h1 className="text-2xl font-bold text-gray-800 tracking-tight">Notas de Venda (Não Fiscal)</h1>
-                <p className="text-gray-600">Histórico de vendas comuns e emissão de comprovantes</p>
+                <h1 className="text-2xl font-bold text-gray-800 tracking-tight">Notas de Venda</h1>
+                <p className="text-gray-600">Histórico de vendas e emissão de cupons</p>
             </header>
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -171,8 +187,8 @@ const CommonSales: React.FC = () => {
                         </span>
                         <input
                             type="text"
-                            placeholder="Buscar por número da nota..."
-                            className="pl-10 w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                            placeholder="Buscar nota..."
+                            className="pl-10 w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
@@ -182,45 +198,28 @@ const CommonSales: React.FC = () => {
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
                         <thead>
-                            <tr className="bg-gray-50 border-b border-gray-100 text-xs font-black text-gray-400 uppercase tracking-wider">
+                            <tr className="bg-gray-50 border-b text-xs font-bold text-gray-500 uppercase tracking-wider">
                                 <th className="px-6 py-4">Nº Venda</th>
-                                <th className="px-6 py-4">Data/Hora</th>
-                                <th className="px-6 py-4">Valor Total</th>
-                                <th className="px-6 py-4">Pagamento</th>
+                                <th className="px-6 py-4">Data</th>
+                                <th className="px-6 py-4">Total</th>
                                 <th className="px-6 py-4 text-right">Ação</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-100 font-medium">
+                        <tbody className="divide-y divide-gray-100">
                             {filteredSales.map((sale) => (
-                                <tr key={sale.id} className="hover:bg-gray-50 transition-colors">
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded flex items-center justify-center">
-                                                <FileText size={16} />
-                                            </div>
-                                            <span className="font-bold text-gray-700">#{sale.nfe_numero || sale.id.slice(0, 6)}</span>
-                                        </div>
-                                    </td>
+                                <tr key={sale.id} className="hover:bg-gray-50">
+                                    <td className="px-6 py-4 font-bold text-gray-700">#{sale.nfe_numero || sale.id.slice(0, 6)}</td>
                                     <td className="px-6 py-4 text-xs text-gray-500">{new Date(sale.data_venda).toLocaleString('pt-BR')}</td>
-                                    <td className="px-6 py-4 font-black text-gray-800">
+                                    <td className="px-6 py-4 font-black">
                                         {sale.valor_total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                     </td>
-                                    <td className="px-6 py-4 capitalize text-xs text-gray-400">{sale.tipo_pagamento.replace('_', ' ')}</td>
                                     <td className="px-6 py-4 text-right">
-                                        <Button variant="ghost" className="text-blue-600 font-black text-[10px] uppercase" onClick={() => setSelectedSale(sale)}>
-                                            Gerar Nota
+                                        <Button variant="ghost" className="text-blue-600 font-bold" onClick={() => setSelectedSale(sale)}>
+                                            Gerar Cupom
                                         </Button>
                                     </td>
                                 </tr>
                             ))}
-                            {filteredSales.length === 0 && (
-                                <tr>
-                                    <td colSpan={5} className="py-20 text-center">
-                                        <FileText size={48} className="mx-auto text-gray-200 mb-4" />
-                                        <p className="text-gray-500 font-bold uppercase text-xs tracking-widest">Nenhuma venda encontrada</p>
-                                    </td>
-                                </tr>
-                            )}
                         </tbody>
                     </table>
                 </div>

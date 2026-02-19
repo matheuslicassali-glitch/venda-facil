@@ -75,6 +75,7 @@ export interface Sale {
   nfe_numero?: string;
   xml?: string;
   chave_acesso?: string;
+  tipo_operacao?: 'venda' | 'devolucao';
 }
 
 export interface CashSession {
@@ -136,6 +137,8 @@ export interface Invoice {
   valor: number;
   status: 'Autorizada' | 'Pendente' | 'Cancelada';
   xml?: string;
+  chave?: string;
+  tipo_operacao?: 'venda' | 'devolucao';
 }
 
 export interface CompanySettings {
@@ -162,6 +165,9 @@ export interface CompanySettings {
     csc_id: string;
     certificado_vencimento?: string;
     ambiente: 'homologacao' | 'producao';
+    certificado_pfx?: string; // Base64 or path
+    certificado_senha?: string;
+    certificado_nome?: string;
   };
 }
 

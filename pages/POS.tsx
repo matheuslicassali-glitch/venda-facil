@@ -20,7 +20,8 @@ import {
   ChevronRight,
   ShieldAlert,
   WifiOff,
-  CloudOff
+  CloudOff,
+  Lock
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -66,8 +67,62 @@ const POS: React.FC<POSProps> = ({ onNotify }) => {
     window.addEventListener('online', () => setIsOffline(false));
     window.addEventListener('offline', () => setIsOffline(true));
 
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Bloqueia F12
+      if (e.key === 'F12') {
+        e.preventDefault();
+        onNotify('🚫 F12 Desabilitado', 'error');
+        return;
+      }
+
+      // Atalhos Rápidos
+      if (e.key === 'F2') {
+        e.preventDefault();
+        barcodeInputRef.current?.focus();
+      }
+      if (e.key === 'F10') {
+        e.preventDefault();
+        if (cart.length > 0) setIsPaymentModalOpen(true);
+      }
+      if (e.key === 'Escape') {
+        setIsPaymentModalOpen(false);
+        setIsAdminAuthOpen(null);
+      }
+
+      // Ajuste de Quantidade (+ e -) no último item
+      if (cart.length > 0 && !isPaymentModalOpen && !isAdminAuthOpen) {
+        const lastItem = cart[cart.length - 1];
+        if (e.key === '+') {
+          e.preventDefault();
+          updateQuantity(lastItem.id, 1);
+        }
+        if (e.code === 'NumpadAdd') {
+          e.preventDefault();
+          updateQuantity(lastItem.id, 1);
+        }
+        if (e.key === '-') {
+          e.preventDefault();
+          updateQuantity(lastItem.id, -1);
+        }
+        if (e.code === 'NumpadSubtract') {
+          e.preventDefault();
+          updateQuantity(lastItem.id, -1);
+        }
+        if (e.key === 'Delete') {
+          e.preventDefault();
+          requestAdminApproval('remove_item', lastItem.id);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
     barcodeInputRef.current?.focus();
-  }, []);
+    return () => {
+      window.removeEventListener('online', () => setIsOffline(false));
+      window.removeEventListener('offline', () => setIsOffline(true));
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [cart, isPaymentModalOpen, isAdminAuthOpen]);
 
   const handleSearch = (term: string) => {
     setSearchTerm(term);
@@ -382,7 +437,7 @@ const POS: React.FC<POSProps> = ({ onNotify }) => {
             </div>
           </div>
 
-          <Button className="w-full py-8 text-2xl font-black rounded-2xl shadow-2xl shadow-blue-200 animate-pulse" disabled={cart.length === 0} onClick={() => setIsPaymentModalOpen(true)}>RECEBER (F12)</Button>
+          <Button className="w-full py-8 text-2xl font-black rounded-2xl shadow-2xl shadow-blue-200 animate-pulse" disabled={cart.length === 0} onClick={() => setIsPaymentModalOpen(true)}>RECEBER (F10)</Button>
         </div>
 
         <div className="bg-blue-700 p-6 rounded-3xl text-white shadow-xl">

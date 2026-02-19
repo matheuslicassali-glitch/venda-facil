@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { FileText, Plus, Download, Search, AlertCircle, CheckCircle2, Clock, RefreshCw, Eye, Key, Trash2, ReceiptText } from 'lucide-react';
+import { FileText, Plus, Download, Search, AlertCircle, CheckCircle2, Clock, RefreshCw, Eye, Key, Trash2, ReceiptText, RotateCcw } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
@@ -58,6 +58,30 @@ const Invoices: React.FC = () => {
     setRange({ start: '', end: '' });
   };
 
+  const handleDevolucao = (saleId: string) => {
+    if (!window.confirm('Deseja gerar uma nota de devolução para esta venda?')) return;
+    const sales: Sale[] = JSON.parse(localStorage.getItem('venda-facil-sales') || '[]');
+    const saleToReturn = sales.find(s => s.id === saleId);
+    if (saleToReturn) {
+      const returnSale: Sale = {
+        ...saleToReturn,
+        id: Math.random().toString(36).substr(2, 9),
+        data_venda: new Date().toISOString(),
+        tipo_operacao: 'devolucao',
+        valor_total: -saleToReturn.valor_total,
+        desconto_total: 0,
+        status: 'concluida',
+        fiscal_status: 'pendente',
+        nfe_numero: Math.floor(100000 + Math.random() * 900000).toString(),
+        xml: undefined,
+        chave_acesso: undefined
+      };
+      localStorage.setItem('venda-facil-sales', JSON.stringify([...sales, returnSale]));
+      alert('Nota de Devolução gerada com sucesso! Agora você pode emitir o XML.');
+      loadSales();
+    }
+  };
+
   useEffect(() => {
     loadSales();
   }, []);
@@ -108,16 +132,20 @@ const Invoices: React.FC = () => {
         </div>
         <div className="flex gap-2">
           <Button variant="ghost" onClick={() => setInutilizingRange(true)} className="text-red-600 hover:bg-red-50 border-red-100 uppercase text-[10px] font-black">
-            Inutilizar Numeração
+            Inutilizar
           </Button>
           <Button variant="secondary" onClick={handleSync} disabled={loading}>
             <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
-            <span>{loading ? 'Sincronizar' : 'Sincronizar'}</span>
+            <span>Sincronizar</span>
           </Button>
-          <Button onClick={() => window.dispatchEvent(new CustomEvent('navigate', { detail: 'pdv' }))}>
-            <Plus size={20} />
-            <span>Emitir Nota</span>
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button onClick={() => window.dispatchEvent(new CustomEvent('navigate', { detail: 'pdv' }))} className="bg-blue-600 rounded-r-none">
+              NFC-e (PDV)
+            </Button>
+            <Button onClick={() => alert('Emissão Manual de NF-e (Modelo 55) em desenvolvimento')} className="bg-indigo-600 rounded-l-none">
+              NF-e
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -199,9 +227,14 @@ const Invoices: React.FC = () => {
                         <ReceiptText size={18} />
                       </button>
                       {inv.status !== 'Cancelada' && (
-                        <button onClick={() => setCancelingInvoice(inv)} className="p-2 text-gray-400 hover:text-red-600 transition-colors" title="Cancelar Nota">
-                          <Trash2 size={18} />
-                        </button>
+                        <>
+                          <button onClick={() => setCancelingInvoice(inv)} className="p-2 text-gray-400 hover:text-red-600 transition-colors" title="Cancelar Nota">
+                            <Trash2 size={18} />
+                          </button>
+                          <button onClick={() => handleDevolucao(inv.id)} className="p-2 text-gray-400 hover:text-orange-600 transition-colors" title="Gerar Devolução">
+                            <RotateCcw size={18} />
+                          </button>
+                        </>
                       )}
                     </div>
                   </td>
