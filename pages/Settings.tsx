@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Settings as SettingsIcon, Building2, Store, FileText, Smartphone, ShieldCheck, Mail, Phone, MapPin } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
+import { db } from '../utils/databaseService';
 import { CompanySettings } from '../types';
 
 const Settings: React.FC<{ onNotify: (msg: string, type: 'success' | 'error') => void }> = ({ onNotify }) => {
@@ -34,21 +35,82 @@ const Settings: React.FC<{ onNotify: (msg: string, type: 'success' | 'error') =>
     });
 
     useEffect(() => {
-        const saved = localStorage.getItem('venda-facil-settings');
-        if (saved) {
-            setSettings(JSON.parse(saved));
-        }
+        loadSettings();
     }, []);
 
-    const handleSave = (e: React.FormEvent) => {
+    const loadSettings = async () => {
+        setLoading(true);
+        try {
+            const data = await db.settings.get();
+            if (data) {
+                setSettings(prev => ({
+                    ...prev,
+                    ...data,
+                    // Map database fields to the nested structure if necessary, 
+                    // or ensure types match the database schema.
+                    // The schema has flat fields like logradouro, numero, etc.
+                    endereco: {
+                        logradouro: data.logradouro || '',
+                        numero: data.numero || '',
+                        bairro: data.bairro || '',
+                        cidade: data.cidade || '',
+                        uf: data.uf || '',
+                        cep: data.cep || '',
+                        ibge_cidade: data.ibge_cidade || ''
+                    },
+                    contato: {
+                        email: data.email_contato || '',
+                        telefone: data.telefone_contato || ''
+                    },
+                    fiscal: {
+                        csc: data.fiscal_csc || '',
+                        csc_id: data.fiscal_csc_id || '',
+                        ambiente: data.fiscal_ambiente || 'homologacao',
+                        certificado_vencimento: data.certificado_vencimento
+                    }
+                }));
+            }
+        } catch (err) {
+            onNotify('❌ Erro ao carregar configurações.', 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
 
-        setTimeout(() => {
-            localStorage.setItem('venda-facil-settings', JSON.stringify(settings));
+        const dbData = {
+            cnpj: settings.cnpj,
+            inscricao_estadual: settings.inscricao_estadual,
+            razao_social: settings.razao_social,
+            nome_fantasia: settings.nome_fantasia,
+            crt: settings.crt,
+            logradouro: settings.endereco.logradouro,
+            numero: settings.endereco.numero,
+            bairro: settings.endereco.bairro,
+            cidade: settings.endereco.cidade,
+            uf: settings.endereco.uf,
+            cep: settings.endereco.cep,
+            ibge_cidade: settings.endereco.ibge_cidade,
+            email_contato: settings.contato.email,
+            telefone_contato: settings.contato.telefone,
+            fiscal_csc: settings.fiscal.csc,
+            fiscal_csc_id: settings.fiscal.csc_id,
+            fiscal_ambiente: settings.fiscal.ambiente,
+            certificado_vencimento: settings.fiscal.certificado_vencimento
+        };
+
+        try {
+            await db.settings.update(dbData);
             onNotify('✅ Configurações salvas com sucesso!', 'success');
+            loadSettings();
+        } catch (err) {
+            onNotify('❌ Erro ao salvar configurações.', 'error');
+        } finally {
             setLoading(false);
-        }, 1000);
+        }
     };
 
     return (

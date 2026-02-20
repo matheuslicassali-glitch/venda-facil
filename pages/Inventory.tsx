@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Boxes, Search, AlertTriangle, ArrowUpDown, History, Package } from 'lucide-react';
 import { Button } from '../components/ui/Button';
+import { db } from '../utils/databaseService';
 import { Product } from '../types';
 
 interface InventoryProps {
@@ -12,13 +13,23 @@ const Inventory: React.FC<InventoryProps> = ({ onNotify }) => {
     const [products, setProducts] = useState<Product[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [filter, setFilter] = useState<'todos' | 'baixo' | 'esgotado'>('todos');
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        const saved = localStorage.getItem('venda-facil-products');
-        if (saved) {
-            setProducts(JSON.parse(saved));
-        }
+        loadProducts();
     }, []);
+
+    const loadProducts = async () => {
+        setLoading(true);
+        try {
+            const data = await db.products.list();
+            setProducts(data);
+        } catch (err) {
+            onNotify('❌ Erro ao carregar estoque.', 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const filteredProducts = products.filter(p => {
         const matchesSearch = p.nome.toLowerCase().includes(searchTerm.toLowerCase()) || p.sku.includes(searchTerm);

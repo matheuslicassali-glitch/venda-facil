@@ -54,11 +54,6 @@ const Clients: React.FC<ClientsProps> = ({ onNotify }) => {
         }
     };
 
-    const saveToStorage = (newClients: Client[]) => {
-        setClients(newClients);
-        localStorage.setItem('venda-facil-clients', JSON.stringify(newClients));
-    };
-
     const handleOpenModal = (client: Client | null = null) => {
         if (client) {
             setEditingClient(client);

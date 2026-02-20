@@ -3,57 +3,66 @@ import React, { useState } from 'react';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 
+import { db } from '../utils/databaseService';
 import { Permission, Employee } from '../types';
 
 interface LoginProps {
-  onLogin: (userData?: { email: string, name: string, permissions: Permission[] }) => void;
+  onLogin: (userData?: { id: string, email: string, name: string, permissions: Permission[] }) => void;
   onNotify: (message: string, type: 'success' | 'error') => void;
 }
 
 const Login: React.FC<LoginProps> = ({ onLogin, onNotify }) => {
-  const [isRegistering, setIsRegistering] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   // Master credentials specified by the user
   const MASTER_EMAIL = "matheuslicassali@gmail.com";
   const MASTER_PASS = "1234";
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    // Simulate network delay
-    setTimeout(() => {
-      const inputEmail = email.toLowerCase().trim();
-      const inputPass = password.trim();
+    const inputEmail = email.toLowerCase().trim();
+    const inputPass = password.trim();
 
+    try {
       // Logic for login
+      const employees = await db.employees.list();
+
       if (inputEmail === MASTER_EMAIL.toLowerCase() && inputPass === MASTER_PASS) {
+        const masterEmp = employees.find(e => e.email.toLowerCase() === MASTER_EMAIL.toLowerCase());
         const allPermissions: Permission[] = [
           'all', 'produtos', 'pdv', 'relatorios', 'nfe', 'fornecedores',
           'funcionarios', 'estoque', 'clientes', 'caixa', 'financeiro', 'configuracoes'
         ];
         onNotify('✅ Login MASTER realizado com sucesso!', 'success');
-        onLogin({ email: MASTER_EMAIL, name: "Usuário Master", permissions: allPermissions });
+        onLogin({
+          id: masterEmp?.id || '',
+          email: MASTER_EMAIL,
+          name: "Usuário Master",
+          permissions: allPermissions
+        });
       } else if (email && password.length >= 4) {
-        const employees: Employee[] = JSON.parse(localStorage.getItem('venda-facil-employees') || '[]');
         const emp = employees.find(e => e.email.toLowerCase().trim() === inputEmail && e.status === 'Ativo');
 
+        // Note: For a real production app, passwords should be verified server-side.
+        // Since we are using a client-side Supabase pattern here, we follow the user's existing logic.
         if (emp) {
           onNotify(`✅ Bem-vindo, ${emp.nome}!`, 'success');
-          onLogin({ email, name: emp.nome, permissions: emp.permissoes || [] });
+          onLogin({ id: emp.id, email, name: emp.nome, permissions: emp.permissoes || [] });
         } else {
           onNotify('❌ Credenciais inválidas ou funcionário inativo.', 'error');
         }
       } else {
         onNotify('❌ Credenciais inválidas.', 'error');
       }
+    } catch (err) {
+      onNotify('❌ Erro ao conectar ao servidor.', 'error');
+    } finally {
       setLoading(false);
-    }, 800);
+    }
   };
 
   return (

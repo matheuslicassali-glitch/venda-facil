@@ -157,7 +157,8 @@ CREATE TABLE empresa_configuracoes (
   fiscal_csc TEXT,
   fiscal_csc_id TEXT,
   fiscal_ambiente TEXT,
-  certificado_vencimento DATE
+  certificado_vencimento DATE,
+  status_licenca TEXT DEFAULT 'ativo'
 );
 
 -- Enable RLS (Row Level Security) - Opcional mas recomendado

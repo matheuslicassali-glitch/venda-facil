@@ -1,41 +1,54 @@
 
 import React, { useState, useEffect } from 'react';
 import { CalendarDays, CalendarRange, CalendarClock, TrendingUp, Users, Package, AlertTriangle } from 'lucide-react';
+import { db } from '../utils/databaseService';
 import { Product, Sale } from '../types';
 
 const Dashboard: React.FC = () => {
   const [stats, setStats] = useState({ diario: 0, semanal: 0, mensal: 0 });
   const [recentSales, setRecentSales] = useState<Sale[]>([]);
   const [lowStockProducts, setLowStockProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Load Sales
-    const savedSales: Sale[] = JSON.parse(localStorage.getItem('venda-facil-sales') || '[]');
-    const now = new Date();
-
-    const diario = savedSales
-      .filter(s => new Date(s.data_venda).toDateString() === now.toDateString())
-      .reduce((acc, s) => acc + s.valor_total, 0);
-
-    const matchWeek = (date: Date) => {
-      const oneDay = 24 * 60 * 60 * 1000;
-      return (now.getTime() - date.getTime()) < (7 * oneDay);
-    };
-    const semanal = savedSales
-      .filter(s => matchWeek(new Date(s.data_venda)))
-      .reduce((acc, s) => acc + s.valor_total, 0);
-
-    const mensal = savedSales
-      .filter(s => new Date(s.data_venda).getMonth() === now.getMonth() && new Date(s.data_venda).getFullYear() === now.getFullYear())
-      .reduce((acc, s) => acc + s.valor_total, 0);
-
-    setStats({ diario, semanal, mensal });
-    setRecentSales(savedSales.slice(-5).reverse());
-
-    // Load Products for stock alerts
-    const savedProducts: Product[] = JSON.parse(localStorage.getItem('venda-facil-products') || '[]');
-    setLowStockProducts(savedProducts.filter(p => p.estoque_atual < 10));
+    loadDashboardData();
   }, []);
+
+  const loadDashboardData = async () => {
+    setLoading(true);
+    try {
+      const [allSales, allProducts] = await Promise.all([
+        db.sales.list(),
+        db.products.list()
+      ]);
+
+      const now = new Date();
+
+      const diario = allSales
+        .filter(s => new Date(s.data_venda).toDateString() === now.toDateString())
+        .reduce((acc, s) => acc + s.valor_total, 0);
+
+      const matchWeek = (date: Date) => {
+        const oneDay = 24 * 60 * 60 * 1000;
+        return (now.getTime() - date.getTime()) < (7 * oneDay);
+      };
+      const semanal = allSales
+        .filter(s => matchWeek(new Date(s.data_venda)))
+        .reduce((acc, s) => acc + s.valor_total, 0);
+
+      const mensal = allSales
+        .filter(s => new Date(s.data_venda).getMonth() === now.getMonth() && new Date(s.data_venda).getFullYear() === now.getFullYear())
+        .reduce((acc, s) => acc + s.valor_total, 0);
+
+      setStats({ diario, semanal, mensal });
+      setRecentSales(allSales.slice(0, 5)); // allSales is already ordered by data_venda DESC in db.sales.list()
+      setLowStockProducts(allProducts.filter(p => p.estoque_atual < 10));
+    } catch (err) {
+      console.error('Erro ao carregar dashboard:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const cards = [
     { title: 'Faturamento Diário', value: stats.diario, icon: CalendarDays, color: 'text-blue-500', trend: '+100%' },

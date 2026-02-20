@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Login from './pages/Login';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
+import { db } from './utils/databaseService';
 import { ShieldAlert } from 'lucide-react';
 import Products from './pages/Products';
 import POS from './pages/POS';
@@ -28,7 +29,7 @@ const App: React.FC = () => {
 
   // Simple authentication state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState<{ email: string, name: string, permissions: Permission[] } | null>(null);
+  const [user, setUser] = useState<{ id: string, email: string, name: string, permissions: Permission[] } | null>(null);
   const [isBlocked, setIsBlocked] = useState(false);
 
   useEffect(() => {
@@ -58,7 +59,7 @@ const App: React.FC = () => {
     return () => window.removeEventListener('navigate', handleGlobalNav);
   }, []);
 
-  const handleLogin = (userData?: { email: string, name: string, permissions: Permission[] }) => {
+  const handleLogin = (userData?: { id: string, email: string, name: string, permissions: Permission[] }) => {
     setIsAuthenticated(true);
     setView('dashboard');
     localStorage.setItem('venda-facil-auth', 'true');
@@ -126,14 +127,14 @@ const App: React.FC = () => {
     switch (view) {
       case 'dashboard': return <Dashboard />;
       case 'produtos': return <Products onNotify={showToast} />;
-      case 'pdv': return <POS onNotify={showToast} />;
+      case 'pdv': return <POS onNotify={showToast} currentUser={user} />;
       case 'relatorios': return <Reports />;
       case 'nfe': return <Invoices />;
       case 'fornecedores': return <Suppliers onNotify={showToast} />;
       case 'funcionarios': return <Employees onNotify={showToast} />;
       case 'estoque': return <Inventory onNotify={showToast} />;
       case 'clientes': return <Clients onNotify={showToast} />;
-      case 'caixa': return <Cashier onNotify={showToast} />;
+      case 'caixa': return <Cashier onNotify={showToast} currentUser={user} />;
       case 'financeiro': return <Finance onNotify={showToast} />;
       case 'configuracoes': return <Settings onNotify={showToast} />;
       case 'venda_comum': return <CommonSales />;

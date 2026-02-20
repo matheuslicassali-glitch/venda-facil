@@ -56,26 +56,27 @@ export const db = {
     // SALES
     sales: {
         async list() {
-            const { data, error } = await supabase.from('vendas').select('*, items:venda_itens(*)').order('data_venda', { ascending: false });
+            const { data, error } = await supabase.from('vendas').select('*, venda_itens(*)').order('data_venda', { ascending: false });
             if (error) throw error;
-            return data as Sale[];
+            return (data as any[]).map(s => ({ ...s, itens: s.venda_itens })) as Sale[];
         },
         async create(sale: Sale) {
-            const { data, error: saleError } = await supabase.from('vendas').insert({
-                id: sale.id,
+            const payload: any = {
                 data_venda: sale.data_venda,
                 valor_total: sale.valor_total,
                 desconto_total: sale.desconto_total,
                 tipo_pagamento: sale.tipo_pagamento,
-                cliente_id: sale.cliente_id,
-                vendedor_id: sale.vendedor_id,
+                cliente_id: sale.cliente_id && sale.cliente_id !== '' ? sale.cliente_id : null,
+                vendedor_id: sale.vendedor_id && sale.vendedor_id !== '1' && sale.vendedor_id !== 'manual' ? sale.vendedor_id : null,
                 status: sale.status,
                 fiscal_status: sale.fiscal_status,
                 nfe_numero: sale.nfe_numero,
                 chave_acesso: sale.chave_acesso,
                 xml: sale.xml,
                 tipo_operacao: sale.tipo_operacao
-            }).select().single();
+            };
+
+            const { data, error: saleError } = await supabase.from('vendas').insert(payload).select().single();
 
             if (saleError) throw saleError;
 
@@ -102,7 +103,14 @@ export const db = {
             return data as CashSession;
         },
         async openSession(session: CashSession) {
-            const { error } = await supabase.from('caixa_sessoes').insert(session);
+            const payload: any = {
+                aberto_em: session.aberto_em,
+                valor_abertura: session.valor_abertura,
+                valor_fechamento_esperado: session.valor_fechamento_esperado,
+                status: session.status,
+                vendedor_id: session.vendedor_id && session.vendedor_id !== '1' ? session.vendedor_id : null
+            };
+            const { error } = await supabase.from('caixa_sessoes').insert(payload);
             if (error) throw error;
         },
         async updateSession(id: string, data: Partial<CashSession>) {
@@ -110,7 +118,14 @@ export const db = {
             if (error) throw error;
         },
         async addTransaction(transaction: CashTransaction) {
-            const { error } = await supabase.from('caixa_movimentacoes').insert(transaction);
+            const payload = {
+                caixa_id: transaction.caixa_id,
+                tipo: transaction.tipo,
+                valor: transaction.valor,
+                motivo: transaction.motivo,
+                data: transaction.data
+            };
+            const { error } = await supabase.from('caixa_movimentacoes').insert(payload);
             if (error) throw error;
         },
         async listHistory() {
@@ -132,7 +147,12 @@ export const db = {
             return data as FinancialAccount[];
         },
         async upsert(account: FinancialAccount) {
-            const { error } = await supabase.from('financeiro_contas').upsert(account);
+            const payload: any = { ...account };
+            // If ID is not a valid UUID (e.g. random string), omit it to let Supabase generate one
+            if (account.id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(account.id)) {
+                delete payload.id;
+            }
+            const { error } = await supabase.from('financeiro_contas').upsert(payload);
             if (error) throw error;
         }
     },
@@ -141,6 +161,26 @@ export const db = {
             const { data, error } = await supabase.from('empresa_configuracoes').select('*').single();
             if (error && error.code !== 'PGRST116') throw error;
             return data;
+        },
+        async update(settings: any) {
+            const { error } = await supabase.from('empresa_configuracoes').upsert({ id: 1, ...settings });
+            if (error) throw error;
+        }
+    },
+    // SUPPLIERS
+    suppliers: {
+        async list() {
+            const { data, error } = await supabase.from('fornecedores').select('*').order('nome');
+            if (error) throw error;
+            return data as Supplier[];
+        },
+        async upsert(supplier: Supplier) {
+            const { error } = await supabase.from('fornecedores').upsert(supplier);
+            if (error) throw error;
+        },
+        async delete(id: string) {
+            const { error } = await supabase.from('fornecedores').delete().eq('id', id);
+            if (error) throw error;
         }
     },
     supabase

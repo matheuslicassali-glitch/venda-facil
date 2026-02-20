@@ -4,6 +4,7 @@ import { Truck, Plus, Search, Edit, Trash2, Mail, Phone, MapPin } from 'lucide-r
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
+import { db } from '../utils/databaseService';
 import { Supplier } from '../types';
 
 interface SuppliersProps {
@@ -22,22 +23,19 @@ const Suppliers: React.FC<SuppliersProps> = ({ onNotify }) => {
   const [formData, setFormData] = useState({ nome: '', cnpj: '', email: '', telefone: '', endereco: '' });
 
   useEffect(() => {
-    const saved = localStorage.getItem('venda-facil-suppliers');
-    if (saved) {
-      setSuppliers(JSON.parse(saved));
-    } else {
-      const initial: Supplier[] = [
-        { id: '1', nome: 'Atacadista Brasil LTDA', cnpj: '12.345.678/0001-90', email: 'vendas@atacadista.com', telefone: '(11) 4002-8922', endereco: 'Rua das Indústrias, 450 - SP' },
-        { id: '2', nome: 'Indústria Têxtil Sul', cnpj: '98.765.432/0001-10', email: 'contato@textilsul.com.br', telefone: '(47) 3322-1100', endereco: 'Av. Industrial, 1200 - SC' },
-      ];
-      setSuppliers(initial);
-      localStorage.setItem('venda-facil-suppliers', JSON.stringify(initial));
-    }
+    loadSuppliers();
   }, []);
 
-  const saveToStorage = (newSups: Supplier[]) => {
-    setSuppliers(newSups);
-    localStorage.setItem('venda-facil-suppliers', JSON.stringify(newSups));
+  const loadSuppliers = async () => {
+    setLoading(true);
+    try {
+      const data = await db.suppliers.list();
+      setSuppliers(data);
+    } catch (err) {
+      onNotify('❌ Erro ao carregar fornecedores.', 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleOpenModal = (sup: Supplier | null = null) => {
@@ -51,37 +49,41 @@ const Suppliers: React.FC<SuppliersProps> = ({ onNotify }) => {
     setIsModalOpen(true);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    setTimeout(() => {
-      if (editingSup) {
-        const updated = suppliers.map(sup =>
-          sup.id === editingSup.id ? { ...sup, ...formData } : sup
-        );
-        saveToStorage(updated);
-        onNotify('✅ Fornecedor atualizado com sucesso!', 'success');
-      } else {
-        const newSup: Supplier = {
-          id: Math.random().toString(36).substr(2, 9),
-          ...formData
-        };
-        saveToStorage([...suppliers, newSup]);
-        onNotify('✅ Fornecedor cadastrado com sucesso!', 'success');
-      }
+    const supplierData: Supplier = {
+      id: editingSup ? editingSup.id : Math.random().toString(36).substr(2, 9),
+      ...formData
+    };
+
+    try {
+      await db.suppliers.upsert(supplierData);
+      onNotify(`✅ Fornecedor ${editingSup ? 'atualizado' : 'cadastrado'} com sucesso!`, 'success');
       setIsModalOpen(false);
+      loadSuppliers();
+    } catch (err) {
+      onNotify('❌ Erro ao salvar fornecedor.', 'error');
+    } finally {
       setLoading(false);
-    }, 800);
+    }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!supToDelete) return;
-    const updated = suppliers.filter(sup => sup.id !== supToDelete.id);
-    saveToStorage(updated);
-    setIsDeleteModalOpen(false);
-    setSupToDelete(null);
-    onNotify('🗑️ Fornecedor removido com sucesso!', 'success');
+    setLoading(true);
+    try {
+      await db.suppliers.delete(supToDelete.id);
+      onNotify('🗑️ Fornecedor removido com sucesso!', 'success');
+      setIsDeleteModalOpen(false);
+      setSupToDelete(null);
+      loadSuppliers();
+    } catch (err) {
+      onNotify('❌ Erro ao remover fornecedor.', 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const filteredSuppliers = suppliers.filter(sup =>

@@ -62,11 +62,6 @@ const Finance: React.FC<FinanceProps> = ({ onNotify }) => {
         }
     };
 
-    const saveToStorage = (newAccounts: FinancialAccount[]) => {
-        setAccounts(newAccounts);
-        localStorage.setItem('venda-facil-finance', JSON.stringify(newAccounts));
-    };
-
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);

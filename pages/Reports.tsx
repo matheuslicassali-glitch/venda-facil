@@ -28,6 +28,7 @@ import {
   Cell
 } from 'recharts';
 import { Button } from '../components/ui/Button';
+import { db } from '../utils/databaseService';
 import { Sale, Product, Employee } from '../types';
 
 const Reports: React.FC = () => {
@@ -35,12 +36,29 @@ const Reports: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [period, setPeriod] = useState<'diario' | 'semanal' | 'mensal'>('semanal');
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    setSales(JSON.parse(localStorage.getItem('venda-facil-sales') || '[]'));
-    setProducts(JSON.parse(localStorage.getItem('venda-facil-products') || '[]'));
-    setEmployees(JSON.parse(localStorage.getItem('venda-facil-employees') || '[]'));
+    loadData();
   }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [s, p, e] = await Promise.all([
+        db.sales.list(),
+        db.products.list(),
+        db.employees.list()
+      ]);
+      setSales(s);
+      setProducts(p);
+      setEmployees(e);
+    } catch (err) {
+      console.error('Erro ao carregar dados dos relatórios:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const stats = useMemo(() => {
     const totalVendas = sales.length;

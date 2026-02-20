@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { FileText, Plus, Trash2, Save, ShoppingBag, User, ArrowLeft, Building2, Truck, Calculator } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
+import { db } from '../utils/databaseService';
 import { Client, Product, SaleItem, CompanySettings, Sale } from '../types';
 import { generateNFeXML } from '../utils/nfeXmlService';
 import { signNFeXML } from '../utils/signatureService';
@@ -22,9 +23,24 @@ const NFeManual: React.FC<NFeManualProps> = ({ onNotify }) => {
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        setClients(JSON.parse(localStorage.getItem('venda-facil-clients') || '[]'));
-        setProducts(JSON.parse(localStorage.getItem('venda-facil-products') || '[]'));
+        loadInitialData();
     }, []);
+
+    const loadInitialData = async () => {
+        setLoading(true);
+        try {
+            const [clis, prods] = await Promise.all([
+                db.clients.list(),
+                db.products.list()
+            ]);
+            setClients(clis);
+            setProducts(prods);
+        } catch (err) {
+            onNotify('❌ Erro ao buscar dados iniciais.', 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleSearchProduct = (term: string) => {
         setSearchTerm(term);
@@ -68,7 +84,7 @@ const NFeManual: React.FC<NFeManualProps> = ({ onNotify }) => {
 
     const total = cart.reduce((acc, item) => acc + item.subtotal, 0);
 
-    const handleEmit = () => {
+    const handleEmit = async () => {
         if (!selectedClient) {
             onNotify('❌ Selecione um destinatário!', 'error');
             return;
@@ -80,27 +96,45 @@ const NFeManual: React.FC<NFeManualProps> = ({ onNotify }) => {
 
         setLoading(true);
 
-        // Simulate SEFAZ logic
-        setTimeout(() => {
+        try {
             const nfe_numero = Math.floor(100000 + Math.random() * 900000).toString();
-            const companySettings: CompanySettings = JSON.parse(localStorage.getItem('venda-facil-settings') || '{}');
+            const companySettingsData = await db.settings.get();
+
+            // Map db flat fields to settings object for XML service
+            const companySettings: CompanySettings = {
+                ...companySettingsData,
+                endereco: {
+                    logradouro: companySettingsData.logradouro,
+                    numero: companySettingsData.numero,
+                    bairro: companySettingsData.bairro,
+                    cidade: companySettingsData.cidade,
+                    uf: companySettingsData.uf,
+                    cep: companySettingsData.cep,
+                    ibge_cidade: companySettingsData.ibge_cidade
+                },
+                contato: {
+                    email: companySettingsData.email_contato,
+                    telefone: companySettingsData.telefone_contato
+                },
+                fiscal: {
+                    csc: companySettingsData.fiscal_csc,
+                    csc_id: companySettingsData.fiscal_csc_id,
+                    ambiente: companySettingsData.fiscal_ambiente
+                }
+            };
 
             let generatedXml = '';
             let chaveAcesso = '';
 
-            try {
-                if (companySettings.cnpj) {
-                    const rawXml = generateNFeXML({
-                        id: '', data_venda: new Date().toISOString(), valor_total: total, desconto_total: 0,
-                        itens: cart, tipo_pagamento: 'dinheiro', status: 'concluida', fiscal_status: 'pendente', nfe_numero
-                    } as Sale, selectedClient, companySettings, products);
+            if (companySettings.cnpj) {
+                const rawXml = generateNFeXML({
+                    id: '', data_venda: new Date().toISOString(), valor_total: total, desconto_total: 0,
+                    itens: cart, tipo_pagamento: 'dinheiro', status: 'concluida', fiscal_status: 'pendente', nfe_numero
+                } as Sale, selectedClient, companySettings, products);
 
-                    generatedXml = signNFeXML(rawXml);
-                    const keyMatch = generatedXml.match(/Id="NFe(\d+)"/);
-                    chaveAcesso = keyMatch ? keyMatch[1] : '';
-                }
-            } catch (err) {
-                console.error(err);
+                generatedXml = signNFeXML(rawXml);
+                const keyMatch = generatedXml.match(/Id="NFe(\d+)"/);
+                chaveAcesso = keyMatch ? keyMatch[1] : '';
             }
 
             const newSale: Sale = {
@@ -120,13 +154,16 @@ const NFeManual: React.FC<NFeManualProps> = ({ onNotify }) => {
                 tipo_operacao: 'venda'
             };
 
-            const sales = JSON.parse(localStorage.getItem('venda-facil-sales') || '[]');
-            localStorage.setItem('venda-facil-sales', JSON.stringify([...sales, newSale]));
+            await db.sales.create(newSale);
 
             onNotify(`✅ NF-e #${nfe_numero} emitida com sucesso!`, 'success');
-            setLoading(false);
             window.dispatchEvent(new CustomEvent('navigate', { detail: 'nfe' }));
-        }, 1500);
+        } catch (err) {
+            console.error(err);
+            onNotify('❌ Erro ao emitir NF-e.', 'error');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (

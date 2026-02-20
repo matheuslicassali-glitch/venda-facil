@@ -9,9 +9,10 @@ import { db } from '../utils/databaseService';
 
 interface CashierProps {
     onNotify: (message: string, type: 'success' | 'error') => void;
+    currentUser: { id: string, name: string } | null;
 }
 
-const Cashier: React.FC<CashierProps> = ({ onNotify }) => {
+const Cashier: React.FC<CashierProps> = ({ onNotify, currentUser }) => {
     const [session, setSession] = useState<CashSession | null>(null);
     const [transactions, setTransactions] = useState<CashTransaction[]>([]);
     const [sales, setSales] = useState<Sale[]>([]);
@@ -67,22 +68,32 @@ const Cashier: React.FC<CashierProps> = ({ onNotify }) => {
 
     const handleOpenCash = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!currentUser) {
+            onNotify('❌ Erro: Usuário não identificado.', 'error');
+            return;
+        }
         setLoading(true);
         try {
-            const newSession: CashSession = {
-                id: Math.random().toString(36).substr(2, 9),
+            const newSessionPayload: any = {
                 aberto_em: new Date().toISOString(),
                 valor_abertura: parseFloat(formData.valor),
                 valor_fechamento_esperado: parseFloat(formData.valor),
-                status: 'aberto',
-                vendedor_id: '1' // master
+                status: 'aberto' as const
             };
-            await db.cashier.openSession(newSession);
-            setSession(newSession);
+
+            if (currentUser.id) {
+                newSessionPayload.vendedor_id = currentUser.id;
+            }
+
+            const { data, error } = await db.supabase.from('caixa_sessoes').insert(newSessionPayload).select().single();
+            if (error) throw error;
+
+            setSession(data as CashSession);
             setIsModalOpen(null);
             onNotify('🔓 Caixa aberto com sucesso!', 'success');
             loadCashierData();
         } catch (err) {
+            console.error('Erro ao abrir caixa:', err);
             onNotify('❌ Erro ao abrir caixa.', 'error');
         } finally {
             setLoading(false);
@@ -95,8 +106,7 @@ const Cashier: React.FC<CashierProps> = ({ onNotify }) => {
         setLoading(true);
 
         const val = parseFloat(formData.valor);
-        const newTrans: CashTransaction = {
-            id: Math.random().toString(36).substr(2, 9),
+        const newTransPayload = {
             caixa_id: session.id,
             tipo: transType,
             valor: val,
@@ -105,7 +115,8 @@ const Cashier: React.FC<CashierProps> = ({ onNotify }) => {
         };
 
         try {
-            await db.cashier.addTransaction(newTrans);
+            const { error } = await db.supabase.from('caixa_movimentacoes').insert(newTransPayload);
+            if (error) throw error;
 
             const updatedExpected = transType === 'sangria'
                 ? session.valor_fechamento_esperado - val

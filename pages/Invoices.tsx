@@ -4,6 +4,7 @@ import { FileText, Plus, Download, Search, AlertCircle, CheckCircle2, Clock, Ref
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
+import { db } from '../utils/databaseService';
 import { Invoice, Sale } from '../types';
 
 const Invoices: React.FC = () => {
@@ -17,33 +18,53 @@ const Invoices: React.FC = () => {
   const [justification, setJustification] = useState('');
   const [range, setRange] = useState({ start: '', end: '' });
 
-  const loadSales = () => {
-    const sales: Sale[] = JSON.parse(localStorage.getItem('venda-facil-sales') || '[]');
-    const mapped = sales.map(s => ({
-      id: s.id,
-      numero: s.nfe_numero || '000.000.000',
-      serie: '001',
-      tipo: s.tipo_pagamento === 'dinheiro' ? 'NFCe' : 'NFe',
-      data: new Date(s.data_venda).toLocaleString('pt-BR'),
-      valor: s.valor_total,
-      status: s.status === 'cancelada' ? 'Cancelada' : (s.fiscal_status === 'emitida' ? 'Autorizada' : 'Pendente'),
-      xml: s.xml,
-      chave: s.chave_acesso
-    }));
-    setInvoices(mapped);
+  const loadSales = async () => {
+    setLoading(true);
+    try {
+      const sales = await db.sales.list();
+      const mapped = sales.map(s => ({
+        id: s.id,
+        numero: s.nfe_numero || '000.000.000',
+        serie: '001',
+        tipo: s.tipo_pagamento === 'dinheiro' ? 'NFCe' : 'NFe',
+        data: new Date(s.data_venda).toLocaleString('pt-BR'),
+        valor: s.valor_total,
+        status: s.status === 'cancelada' ? 'Cancelada' : (s.fiscal_status === 'emitida' ? 'Autorizada' : 'Pendente'),
+        xml: s.xml,
+        chave: s.chave_acesso
+      }));
+      setInvoices(mapped);
+    } catch (err) {
+      console.error('Erro ao carregar notas:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleCancelInvoice = () => {
+  const handleCancelInvoice = async () => {
     if (justification.length < 15) {
       alert('A justificativa deve ter pelo menos 15 caracteres.');
       return;
     }
-    const sales: Sale[] = JSON.parse(localStorage.getItem('venda-facil-sales') || '[]');
-    const updated = sales.map(s => s.id === cancelingInvoice.id ? { ...s, status: 'cancelada' as any, fiscal_status: 'erro' as any } : s);
-    localStorage.setItem('venda-facil-sales', JSON.stringify(updated));
-    setCancelingInvoice(null);
-    setJustification('');
-    loadSales();
+    setLoading(true);
+    try {
+      // Find the sale and update it
+      const { data: sale } = await db.supabase.from('vendas').select('*').eq('id', cancelingInvoice.id).single();
+      if (sale) {
+        await db.supabase.from('vendas').update({
+          status: 'cancelada',
+          fiscal_status: 'erro'
+        }).eq('id', cancelingInvoice.id);
+
+        setCancelingInvoice(null);
+        setJustification('');
+        loadSales();
+      }
+    } catch (err) {
+      console.error('Erro ao cancelar nota:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleInutilizar = () => {
@@ -51,34 +72,39 @@ const Invoices: React.FC = () => {
       alert('A justificativa deve ter pelo menos 15 caracteres.');
       return;
     }
-    // In actual logic, this sends to SEFAZ. Here we just notify.
     alert(`Números ${range.start} até ${range.end} inutilizados com sucesso.`);
     setInutilizingRange(false);
     setJustification('');
     setRange({ start: '', end: '' });
   };
 
-  const handleDevolucao = (saleId: string) => {
+  const handleDevolucao = async (saleId: string) => {
     if (!window.confirm('Deseja gerar uma nota de devolução para esta venda?')) return;
-    const sales: Sale[] = JSON.parse(localStorage.getItem('venda-facil-sales') || '[]');
-    const saleToReturn = sales.find(s => s.id === saleId);
-    if (saleToReturn) {
-      const returnSale: Sale = {
-        ...saleToReturn,
-        id: Math.random().toString(36).substr(2, 9),
-        data_venda: new Date().toISOString(),
-        tipo_operacao: 'devolucao',
-        valor_total: -saleToReturn.valor_total,
-        desconto_total: 0,
-        status: 'concluida',
-        fiscal_status: 'pendente',
-        nfe_numero: Math.floor(100000 + Math.random() * 900000).toString(),
-        xml: undefined,
-        chave_acesso: undefined
-      };
-      localStorage.setItem('venda-facil-sales', JSON.stringify([...sales, returnSale]));
-      alert('Nota de Devolução gerada com sucesso! Agora você pode emitir o XML.');
-      loadSales();
+    setLoading(true);
+    try {
+      const { data: saleToReturn } = await db.supabase.from('vendas').select('*').eq('id', saleId).single();
+      if (saleToReturn) {
+        const returnSale: Sale = {
+          ...saleToReturn,
+          id: Math.random().toString(36).substr(2, 9),
+          data_venda: new Date().toISOString(),
+          tipo_operacao: 'devolucao',
+          valor_total: -saleToReturn.valor_total,
+          desconto_total: 0,
+          status: 'concluida',
+          fiscal_status: 'pendente',
+          nfe_numero: Math.floor(100000 + Math.random() * 900000).toString(),
+          xml: undefined,
+          chave_acesso: undefined
+        };
+        await db.sales.create(returnSale);
+        alert('Nota de Devolução gerada com sucesso! Agora você pode emitir o XML.');
+        loadSales();
+      }
+    } catch (err) {
+      console.error('Erro ao gerar devolução:', err);
+    } finally {
+      setLoading(false);
     }
   };
 

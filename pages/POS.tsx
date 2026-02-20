@@ -33,9 +33,10 @@ import { db } from '../utils/databaseService';
 
 interface POSProps {
   onNotify: (message: string, type: 'success' | 'error') => void;
+  currentUser: any;
 }
 
-const POS: React.FC<POSProps> = ({ onNotify }) => {
+const POS: React.FC<POSProps> = ({ onNotify, currentUser }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<SaleItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -49,7 +50,6 @@ const POS: React.FC<POSProps> = ({ onNotify }) => {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [session, setSession] = useState<CashSession | null>(null);
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [currentUser, setCurrentUser] = useState<Employee | null>(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [adminPin, setAdminPin] = useState('');
   const [loading, setLoading] = useState(false);
@@ -122,20 +122,17 @@ const POS: React.FC<POSProps> = ({ onNotify }) => {
   const loadPOSData = async () => {
     setLoading(true);
     try {
-      const [prods, clis, emps, activeSession] = await Promise.all([
+      const [prods, clis, emps, activeSession, settingsData] = await Promise.all([
         db.products.list(),
         db.clients.list(),
         db.employees.list(),
-        db.cashier.getActiveSession()
+        db.cashier.getActiveSession(),
+        db.settings.get()
       ]);
       setProducts(prods);
       setClients(clis);
       setEmployees(emps);
       setSession(activeSession);
-
-      const userEmail = JSON.parse(localStorage.getItem('venda-facil-user') || '{}').email;
-      const user = emps.find(e => e.email === userEmail);
-      setCurrentUser(user || { cargo: 'Vendedor' } as any);
     } catch (err) {
       console.error(err);
       onNotify('❌ Erro ao carregar dados do PDV.', 'error');
@@ -262,13 +259,34 @@ const POS: React.FC<POSProps> = ({ onNotify }) => {
     setLoading(true);
     const nfe_simulated = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // In a real app, settings would be in DB too
-    const companySettings: CompanySettings = JSON.parse(localStorage.getItem('venda-facil-settings') || '{}');
-
     let generatedXml = '';
     let chaveAcesso = '';
 
     try {
+      const companySettingsData = await db.settings.get();
+      // Map db flat fields to settings object for XML service
+      const companySettings: CompanySettings = {
+        ...companySettingsData,
+        endereco: {
+          logradouro: companySettingsData.logradouro,
+          numero: companySettingsData.numero,
+          bairro: companySettingsData.bairro,
+          cidade: companySettingsData.cidade,
+          uf: companySettingsData.uf,
+          cep: companySettingsData.cep,
+          ibge_cidade: companySettingsData.ibge_cidade
+        },
+        contato: {
+          email: companySettingsData.email_contato,
+          telefone: companySettingsData.telefone_contato
+        },
+        fiscal: {
+          csc: companySettingsData.fiscal_csc,
+          csc_id: companySettingsData.fiscal_csc_id,
+          ambiente: companySettingsData.fiscal_ambiente
+        }
+      };
+
       if (companySettings.cnpj) {
         const rawXml = generateNFeXML({
           id: '', data_venda: '', valor_total: finalTotal, desconto_total: parseFloat(discount),
@@ -283,16 +301,14 @@ const POS: React.FC<POSProps> = ({ onNotify }) => {
       console.error('Erro ao gerar XML:', err);
     }
 
-    const saleId = Math.random().toString(36).substr(2, 9);
-    const newSale: Sale = {
-      id: saleId,
+    const newSalePayload: any = {
       data_venda: new Date().toISOString(),
       valor_total: finalTotal,
       desconto_total: parseFloat(discount),
       itens: cart,
       tipo_pagamento: paymentMethod,
       cliente_id: selectedClient?.id,
-      vendedor_id: currentUser?.id || '1',
+      vendedor_id: currentUser?.id && currentUser.id !== '' ? currentUser.id : null,
       status: 'concluida',
       fiscal_status: isOffline ? 'pendente' : 'emitida',
       nfe_numero: nfe_simulated,
@@ -302,7 +318,7 @@ const POS: React.FC<POSProps> = ({ onNotify }) => {
 
     try {
       // 1. Create Sale and Items
-      await db.sales.create(newSale);
+      await db.sales.create(newSalePayload as any);
 
       // 2. Update Product Stocks
       await Promise.all(cart.map(item => {

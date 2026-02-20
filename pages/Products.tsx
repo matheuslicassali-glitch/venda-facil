@@ -60,11 +60,6 @@ const Products: React.FC<ProductsProps> = ({ onNotify }) => {
     }
   };
 
-  const saveToStorage = (newProducts: Product[]) => {
-    setProducts(newProducts);
-    localStorage.setItem('venda-facil-products', JSON.stringify(newProducts));
-  };
-
   const handleOpenModal = (product: Product | null = null) => {
     if (product) {
       setEditingProduct(product);

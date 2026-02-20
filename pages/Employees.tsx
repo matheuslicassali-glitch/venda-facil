@@ -52,11 +52,6 @@ const Employees: React.FC<EmployeesProps> = ({ onNotify }) => {
     }
   };
 
-  const saveToStorage = (newEmps: Employee[]) => {
-    setEmployees(newEmps);
-    localStorage.setItem('venda-facil-employees', JSON.stringify(newEmps));
-  };
-
   const handleOpenModal = (emp: Employee | null = null) => {
     if (emp) {
       setEditingEmp(emp);
