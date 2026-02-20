@@ -42,8 +42,12 @@ const Login: React.FC<LoginProps> = ({ onLogin, onNotify }) => {
       } else {
         // Logic for login
         if (email === MASTER_EMAIL && password === MASTER_PASS) {
+          const allPermissions: Permission[] = [
+            'all', 'produtos', 'pdv', 'relatorios', 'nfe', 'fornecedores',
+            'funcionarios', 'estoque', 'clientes', 'caixa', 'financeiro', 'configuracoes'
+          ];
           onNotify('✅ Login MASTER realizado com sucesso!', 'success');
-          onLogin({ email: MASTER_EMAIL, name: "Usuário Master", permissions: ['all'] });
+          onLogin({ email: MASTER_EMAIL, name: "Usuário Master", permissions: allPermissions });
         } else if (email && password.length >= 4) {
           const employees: Employee[] = JSON.parse(localStorage.getItem('venda-facil-employees') || '[]');
           const emp = employees.find(e => e.email === email && e.status === 'Ativo');
