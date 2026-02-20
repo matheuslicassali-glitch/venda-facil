@@ -1,10 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
-import { Wallet, ArrowUpCircle, ArrowDownCircle, Lock, Unlock, History, DollarSign, Calculator } from 'lucide-react';
+import { Wallet, ArrowUpCircle, ArrowDownCircle, Lock, Unlock, History, DollarSign, Calculator, CreditCard } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
-import { CashSession, CashTransaction } from '../types';
+import { CashSession, CashTransaction, Sale } from '../types';
 
 interface CashierProps {
     onNotify: (message: string, type: 'success' | 'error') => void;
@@ -13,7 +13,10 @@ interface CashierProps {
 const Cashier: React.FC<CashierProps> = ({ onNotify }) => {
     const [session, setSession] = useState<CashSession | null>(null);
     const [transactions, setTransactions] = useState<CashTransaction[]>([]);
-    const [isModalOpen, setIsModalOpen] = useState<'abertura' | 'fechamento' | 'transacao' | null>(null);
+    const [sales, setSales] = useState<Sale[]>([]);
+    const [history, setHistory] = useState<CashSession[]>([]);
+    const [isModalOpen, setIsModalOpen] = useState<'abertura' | 'fechamento' | 'transacao' | 'relatorio' | null>(null);
+    const [selectedReport, setSelectedReport] = useState<CashSession | null>(null);
     const [transType, setTransType] = useState<'sangria' | 'suprimento'>('sangria');
     const [loading, setLoading] = useState(false);
 
@@ -26,9 +29,13 @@ const Cashier: React.FC<CashierProps> = ({ onNotify }) => {
     useEffect(() => {
         const savedSession = localStorage.getItem('venda-facil-cash-session');
         const savedTransactions = localStorage.getItem('venda-facil-cash-transactions');
+        const savedSales = localStorage.getItem('venda-facil-sales');
+        const savedHistory = localStorage.getItem('venda-facil-cash-history');
 
         if (savedSession) setSession(JSON.parse(savedSession));
         if (savedTransactions) setTransactions(JSON.parse(savedTransactions));
+        if (savedSales) setSales(JSON.parse(savedSales));
+        if (savedHistory) setHistory(JSON.parse(savedHistory));
     }, []);
 
     const saveSession = (s: CashSession | null) => {
@@ -90,17 +97,43 @@ const Cashier: React.FC<CashierProps> = ({ onNotify }) => {
         const valInformado = parseFloat(formData.valor_informado);
         const diff = valInformado - session.valor_fechamento_esperado;
 
-        const closedSession = {
+        const closedSession: CashSession = {
             ...session,
             fechado_em: new Date().toISOString(),
             valor_fechamento_informado: valInformado,
             status: 'fechado' as const
         };
 
-        // Save to history (here we just remove active session)
+        const updatedHistory = [closedSession, ...history];
+        setHistory(updatedHistory);
+        localStorage.setItem('venda-facil-cash-history', JSON.stringify(updatedHistory));
+
         saveSession(null);
         setIsModalOpen(null);
         onNotify(`🔒 Caixa fechado. Diferença: ${diff.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, diff === 0 ? 'success' : 'error');
+    };
+
+    const getSessionSales = (s: CashSession) => {
+        return sales.filter(sale => {
+            const saleDate = new Date(sale.data_venda).getTime();
+            const openDate = new Date(s.aberto_em).getTime();
+            const closeDate = s.fechado_em ? new Date(s.fechado_em).getTime() : Date.now();
+            return saleDate >= openDate && saleDate <= closeDate;
+        });
+    };
+
+    const calculateSessionTotals = (s: CashSession) => {
+        const sessionSales = getSessionSales(s);
+        const totals = sessionSales.reduce((acc, sale) => {
+            acc[sale.tipo_pagamento] = (acc[sale.tipo_pagamento] || 0) + sale.valor_total;
+            acc.total += sale.valor_total;
+            return acc;
+        }, { total: 0 } as Record<string, number>);
+
+        const suprimentos = transactions.filter(t => t.caixa_id === s.id && t.tipo === 'suprimento').reduce((a, b) => a + b.valor, 0);
+        const sangrias = transactions.filter(t => t.caixa_id === s.id && t.tipo === 'sangria').reduce((a, b) => a + b.valor, 0);
+
+        return { ...totals, suprimentos, sangrias };
     };
 
     return (
@@ -124,6 +157,10 @@ const Cashier: React.FC<CashierProps> = ({ onNotify }) => {
                         <Button variant="secondary" onClick={() => { setTransType('sangria'); setFormData({ valor: '', motivo: '' }); setIsModalOpen('transacao'); }}>
                             <ArrowDownCircle size={20} />
                             <span>Sangria</span>
+                        </Button>
+                        <Button variant="ghost" onClick={() => { setSelectedReport(session); setIsModalOpen('relatorio'); }}>
+                            <History size={20} />
+                            <span>Ver Relatório Parcial</span>
                         </Button>
                         <Button variant="danger" onClick={() => { setFormData({ ...formData, valor_informado: '' }); setIsModalOpen('fechamento'); }}>
                             <Lock size={20} />
@@ -174,46 +211,126 @@ const Cashier: React.FC<CashierProps> = ({ onNotify }) => {
             )}
 
             {session && (
-                <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                    <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex items-center gap-2">
-                        <History size={18} className="text-gray-400" />
-                        <h3 className="font-bold text-gray-800">Movimentações da Sessão</h3>
+                <div className="space-y-6">
+                    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden text-[10px] font-black uppercase tracking-widest text-gray-500">
+                        <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+                            <span className="flex items-center gap-2 text-gray-800"><Calculator size={16} /> Resumo de Recebimentos (Sessão Atual)</span>
+                            <span>{getSessionSales(session).length} Vendas</span>
+                        </div>
+                        <div className="p-6 grid grid-cols-2 lg:grid-cols-5 gap-4">
+                            {[
+                                { label: 'Dinheiro', key: 'dinheiro', color: 'text-green-600' },
+                                { label: 'Crédito', key: 'cartao_credito', color: 'text-blue-600' },
+                                { label: 'Débito', key: 'cartao_debito', color: 'text-indigo-600' },
+                                { label: 'PIX', key: 'pix', color: 'text-cyan-600' },
+                                { label: 'Fiado', key: 'fiado', color: 'text-orange-600' }
+                            ].map(m => {
+                                const total = calculateSessionTotals(session)[m.key] || 0;
+                                return (
+                                    <div key={m.key} className="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                                        <p className="mb-1 text-gray-400">{m.label}</p>
+                                        <p className={`text-sm font-black ${m.color}`}>{total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                            <thead>
-                                <tr className="bg-gray-50 border-b border-gray-100 text-[10px] font-black text-gray-500 uppercase tracking-widest">
-                                    <th className="px-6 py-4">Horário</th>
-                                    <th className="px-6 py-4">Tipo</th>
-                                    <th className="px-6 py-4">Motivo / Descrição</th>
-                                    <th className="px-6 py-4 text-right">Valor</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {transactions.filter(t => t.caixa_id === session.id).reverse().map((t) => (
-                                    <tr key={t.id} className="hover:bg-gray-50 transition-colors">
-                                        <td className="px-6 py-4 text-xs font-medium text-gray-500">{new Date(t.data).toLocaleTimeString()}</td>
-                                        <td className="px-6 py-4">
-                                            <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${t.tipo === 'sangria' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                                                {t.tipo}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-gray-700">{t.motivo}</td>
-                                        <td className={`px-6 py-4 text-right font-black ${t.tipo === 'sangria' ? 'text-red-600' : 'text-green-600'}`}>
-                                            {t.tipo === 'sangria' ? '-' : '+'}{t.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                        </td>
+
+                    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                        <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex items-center gap-2">
+                            <History size={18} className="text-gray-400" />
+                            <h3 className="font-bold text-gray-800">Movimentações da Sessão</h3>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left">
+                                <thead>
+                                    <tr className="bg-gray-50 border-b border-gray-100 text-[10px] font-black text-gray-500 uppercase tracking-widest">
+                                        <th className="px-6 py-4">Horário</th>
+                                        <th className="px-6 py-4">Tipo</th>
+                                        <th className="px-6 py-4">Motivo / Descrição</th>
+                                        <th className="px-6 py-4 text-right">Valor</th>
                                     </tr>
-                                ))}
-                                {transactions.filter(t => t.caixa_id === session.id).length === 0 && (
-                                    <tr>
-                                        <td colSpan={4} className="py-10 text-center text-gray-400 text-sm italic">Nenhuma movimentação registrada.</td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {transactions.filter(t => t.caixa_id === session.id).reverse().map((t) => (
+                                        <tr key={t.id} className="hover:bg-gray-50 transition-colors">
+                                            <td className="px-6 py-4 text-xs font-medium text-gray-500">{new Date(t.data).toLocaleTimeString()}</td>
+                                            <td className="px-6 py-4">
+                                                <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${t.tipo === 'sangria' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                                                    {t.tipo}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-gray-700">{t.motivo}</td>
+                                            <td className={`px-6 py-4 text-right font-black ${t.tipo === 'sangria' ? 'text-red-600' : 'text-green-600'}`}>
+                                                {t.tipo === 'sangria' ? '-' : '+'}{t.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {transactions.filter(t => t.caixa_id === session.id).length === 0 && (
+                                        <tr>
+                                            <td colSpan={4} className="py-10 text-center text-gray-400 text-sm italic">Nenhuma movimentação registrada.</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             )}
+
+            <div className="mt-12 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mb-12">
+                <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex items-center gap-2">
+                    <History size={18} className="text-gray-400" />
+                    <h3 className="font-bold text-gray-800 uppercase text-xs tracking-widest">Histórico de Caixas Fechados</h3>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                        <thead>
+                            <tr className="bg-gray-50 border-b border-gray-100 text-[10px] font-black text-gray-500 uppercase tracking-widest">
+                                <th className="px-6 py-4">Abertura</th>
+                                <th className="px-6 py-4">Fechamento</th>
+                                <th className="px-6 py-4 text-right">Esperado</th>
+                                <th className="px-6 py-4 text-right">Informado</th>
+                                <th className="px-6 py-4 text-right">Diferença</th>
+                                <th className="px-6 py-4 text-center">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {history.map((h) => {
+                                const diff = (h.valor_fechamento_informado || 0) - h.valor_fechamento_esperado;
+                                return (
+                                    <tr key={h.id} className="hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => { setSelectedReport(h); setIsModalOpen('relatorio'); }}>
+                                        <td className="px-6 py-4 text-xs text-gray-600">
+                                            <p className="font-black">{new Date(h.aberto_em).toLocaleDateString()}</p>
+                                            <p className="text-[10px]">{new Date(h.aberto_em).toLocaleTimeString()}</p>
+                                        </td>
+                                        <td className="px-6 py-4 text-xs text-gray-600">
+                                            <p className="font-black">{h.fechado_em ? new Date(h.fechado_em).toLocaleDateString() : '-'}</p>
+                                            <p className="text-[10px]">{h.fechado_em ? new Date(h.fechado_em).toLocaleTimeString() : '-'}</p>
+                                        </td>
+                                        <td className="px-6 py-4 text-right text-sm font-black text-gray-700">{h.valor_fechamento_esperado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                                        <td className="px-6 py-4 text-right text-sm font-black text-gray-700 font-mono tracking-tighter">
+                                            {h.valor_fechamento_informado?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) || '---'}
+                                        </td>
+                                        <td className={`px-6 py-4 text-right text-sm font-black ${diff === 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                            {diff > 0 ? '+' : ''}{diff.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            <button className="text-[10px] font-black text-blue-600 uppercase hover:underline">Ver Detalhes</button>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                            {history.length === 0 && (
+                                <tr>
+                                    <td colSpan={6} className="py-10 text-center text-gray-400 text-sm italic">Nenhum histórico encontrado.</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
 
             {/* Modals */}
             <Modal isOpen={isModalOpen === 'abertura'} onClose={() => setIsModalOpen(null)} title="Abertura de Caixa">
@@ -251,8 +368,83 @@ const Cashier: React.FC<CashierProps> = ({ onNotify }) => {
                     </div>
                 </form>
             </Modal>
+            <Modal isOpen={isModalOpen === 'relatorio'} onClose={() => setIsModalOpen(null)} title="Relatório de Fechamento de Caixa">
+                {selectedReport && (() => {
+                    const totals = calculateSessionTotals(selectedReport);
+                    return (
+                        <div className="space-y-6 pt-2">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                                    <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Início</p>
+                                    <p className="text-sm font-bold text-gray-700">{new Date(selectedReport.aberto_em).toLocaleString()}</p>
+                                </div>
+                                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                                    <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Término</p>
+                                    <p className="text-sm font-bold text-gray-700">{selectedReport.fechado_em ? new Date(selectedReport.fechado_em).toLocaleString() : 'Em curso'}</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-3">
+                                <h4 className="text-xs font-black text-gray-400 uppercase border-b pb-2">Vendas por Pagamento</h4>
+                                {[
+                                    { label: 'Dinheiro', key: 'dinheiro', icon: DollarSign },
+                                    { label: 'Cartão de Crédito', key: 'cartao_credito', icon: CreditCard },
+                                    { label: 'Cartão de Débito', key: 'cartao_debito', icon: CreditCard },
+                                    { label: 'PIX', key: 'pix', icon: DollarSign },
+                                    { label: 'Fiado / Convênio', key: 'fiado', icon: Wallet }
+                                ].map(m => (
+                                    <div key={m.key} className="flex justify-between items-center text-sm">
+                                        <span className="text-gray-600 font-medium">{m.label}</span>
+                                        <span className="font-black text-gray-800">{(totals[m.key] || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                    </div>
+                                ))}
+                                <div className="flex justify-between items-center pt-3 border-t text-lg">
+                                    <span className="font-black text-gray-800">Total de Vendas</span>
+                                    <span className="font-black text-blue-600">{totals.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                </div>
+                            </div>
+
+                            <div className="space-y-3 pt-4 border-t-2 border-dashed">
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-gray-500">Abertura de Caixa</span>
+                                    <span className="font-bold">+{selectedReport.valor_abertura.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-gray-500">Suprimentos (+)</span>
+                                    <span className="font-bold text-green-600">+{totals.suprimentos.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-gray-500">Sangrias (-)</span>
+                                    <span className="font-bold text-red-600">-{totals.sangrias.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                </div>
+                                <div className="flex justify-between items-center pt-3 border-t text-xl">
+                                    <span className="font-black text-gray-800">Saldo Final Esperado</span>
+                                    <span className="font-black text-gray-800">{selectedReport.valor_fechamento_esperado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-xl">
+                                    <span className="font-black text-gray-800">Saldo Final Informado</span>
+                                    <span className="font-black text-blue-600">{selectedReport.valor_fechamento_informado?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                </div>
+                                {selectedReport.fechado_em && (
+                                    <div className={`p-4 rounded-xl font-black text-center mt-4 ${((selectedReport.valor_fechamento_informado || 0) - selectedReport.valor_fechamento_esperado) === 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                        Diferença / Quebra: {((selectedReport.valor_fechamento_informado || 0) - selectedReport.valor_fechamento_esperado).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="flex justify-end gap-3 mt-8 pt-4 border-t">
+                                <Button className="flex items-center gap-2" onClick={() => window.print()}>
+                                    <Calculator size={18} /> <span>Imprimir Relatório</span>
+                                </Button>
+                                <Button variant="ghost" onClick={() => setIsModalOpen(null)}>Fechar</Button>
+                            </div>
+                        </div>
+                    );
+                })()}
+            </Modal>
         </div>
     );
 };
+
 
 export default Cashier;

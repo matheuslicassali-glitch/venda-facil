@@ -16,15 +16,16 @@ import {
   Settings as SettingsIcon,
   ReceiptText
 } from 'lucide-react';
-import { View } from '../types';
+import { View, Permission } from '../types';
 
 interface SidebarProps {
   currentView: View;
   onNavigate: (view: View) => void;
   onLogout: () => void;
+  permissions: Permission[];
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onLogout }) => {
+const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onLogout, permissions }) => {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'pdv', label: 'PDV', icon: ShoppingBag },
@@ -48,7 +49,28 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onLogout }) 
       </div>
 
       <nav className="flex-1 px-4 space-y-1 mt-4 overflow-y-auto">
-        {menuItems.map((item) => (
+        {menuItems.filter(item => {
+          if (permissions.includes('all')) return true;
+          if (item.id === 'dashboard') return true;
+
+          const viewToPermission: Record<string, Permission> = {
+            'produtos': 'produtos',
+            'pdv': 'pdv',
+            'relatorios': 'relatorios',
+            'nfe': 'nfe',
+            'fornecedores': 'fornecedores',
+            'funcionarios': 'funcionarios',
+            'estoque': 'estoque',
+            'clientes': 'clientes',
+            'caixa': 'caixa',
+            'financeiro': 'financeiro',
+            'configuracoes': 'configuracoes',
+            'venda_comum': 'pdv',
+            'nfe_manual': 'nfe'
+          };
+
+          return permissions.includes(viewToPermission[item.id] || item.id as Permission);
+        }).map((item) => (
           <button
             key={item.id}
             onClick={() => onNavigate(item.id as View)}

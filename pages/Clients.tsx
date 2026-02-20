@@ -5,6 +5,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { Client } from '../types';
+import { db } from '../utils/databaseService';
 
 interface ClientsProps {
     onNotify: (message: string, type: 'success' | 'error') => void;
@@ -38,11 +39,20 @@ const Clients: React.FC<ClientsProps> = ({ onNotify }) => {
     });
 
     useEffect(() => {
-        const saved = localStorage.getItem('venda-facil-clients');
-        if (saved) {
-            setClients(JSON.parse(saved));
-        }
+        loadClients();
     }, []);
+
+    const loadClients = async () => {
+        setLoading(true);
+        try {
+            const data = await db.clients.list();
+            setClients(data);
+        } catch (err) {
+            onNotify('❌ Erro ao carregar clientes.', 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const saveToStorage = (newClients: Client[]) => {
         setClients(newClients);
@@ -92,51 +102,57 @@ const Clients: React.FC<ClientsProps> = ({ onNotify }) => {
         setIsModalOpen(true);
     };
 
-    const handleSave = (e: React.FormEvent) => {
+    const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
 
-        setTimeout(() => {
-            const clientData: Client = {
-                id: editingClient ? editingClient.id : Math.random().toString(36).substr(2, 9),
-                nome: formData.nome,
-                razao_social: formData.razao_social,
-                documento: formData.documento,
-                inscricao_estadual: formData.inscricao_estadual,
-                email: formData.email,
-                telefone: formData.telefone,
-                limite_credito: parseFloat(formData.limite_credito),
-                saldo_devedor: editingClient ? editingClient.saldo_devedor : 0,
-                endereco: formData.endereco,
-                logradouro: formData.logradouro,
-                numero: formData.numero,
-                bairro: formData.bairro,
-                cidade: formData.cidade,
-                uf: formData.uf,
-                cep: formData.cep,
-                ibge_cidade: formData.ibge_cidade
-            };
+        const clientData: Client = {
+            id: editingClient ? editingClient.id : Math.random().toString(36).substr(2, 9),
+            nome: formData.nome,
+            razao_social: formData.razao_social,
+            documento: formData.documento,
+            inscricao_estadual: formData.inscricao_estadual,
+            email: formData.email,
+            telefone: formData.telefone,
+            limite_credito: parseFloat(formData.limite_credito),
+            saldo_devedor: editingClient ? editingClient.saldo_devedor : 0,
+            endereco: formData.endereco,
+            logradouro: formData.logradouro,
+            numero: formData.numero,
+            bairro: formData.bairro,
+            cidade: formData.cidade,
+            uf: formData.uf,
+            cep: formData.cep,
+            ibge_cidade: formData.ibge_cidade
+        };
 
-            if (editingClient) {
-                const updated = clients.map(c => c.id === editingClient.id ? clientData : c);
-                saveToStorage(updated);
-                onNotify('✅ Cliente atualizado!', 'success');
-            } else {
-                saveToStorage([...clients, clientData]);
-                onNotify('✅ Cliente cadastrado!', 'success');
-            }
+        try {
+            await db.clients.upsert(clientData);
+            onNotify(`✅ Cliente ${editingClient ? 'atualizado' : 'cadastrado'}!`, 'success');
             setIsModalOpen(false);
+            loadClients();
+        } catch (err) {
+            onNotify('❌ Erro ao salvar cliente.', 'error');
+        } finally {
             setLoading(false);
-        }, 800);
+        }
     };
 
-    const handleDelete = () => {
+    const handleDelete = async () => {
         if (!clientToDelete) return;
-        const updated = clients.filter(c => c.id !== clientToDelete.id);
-        saveToStorage(updated);
-        setIsDeleteModalOpen(false);
-        setClientToDelete(null);
-        onNotify('🗑️ Cliente removido.', 'success');
+        setLoading(true);
+        try {
+            const { error } = await (db as any).supabase.from('clientes').delete().eq('id', clientToDelete.id);
+            if (error) throw error;
+            onNotify('🗑️ Cliente removido.', 'success');
+            setIsDeleteModalOpen(false);
+            setClientToDelete(null);
+            loadClients();
+        } catch (err) {
+            onNotify('❌ Erro ao remover cliente.', 'error');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const filteredClients = clients.filter(c =>

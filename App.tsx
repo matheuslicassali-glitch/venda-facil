@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Login from './pages/Login';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
+import { ShieldAlert } from 'lucide-react';
 import Products from './pages/Products';
 import POS from './pages/POS';
 import Reports from './pages/Reports';
@@ -16,7 +17,7 @@ import Finance from './pages/Finance';
 import Settings from './pages/Settings';
 import CommonSales from './pages/CommonSales';
 import NFeManual from './pages/NFeManual';
-import { View } from './types';
+import { View, Permission, Employee } from './types';
 import { Toast } from './components/ui/Toast';
 // Fix: Import missing Button component
 import { Button } from './components/ui/Button';
@@ -27,7 +28,7 @@ const App: React.FC = () => {
 
   // Simple authentication state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState<{ email: string, name: string } | null>(null);
+  const [user, setUser] = useState<{ email: string, name: string, permissions: Permission[] } | null>(null);
 
   useEffect(() => {
     const auth = localStorage.getItem('venda-facil-auth');
@@ -43,7 +44,7 @@ const App: React.FC = () => {
     return () => window.removeEventListener('navigate', handleGlobalNav);
   }, []);
 
-  const handleLogin = (userData?: { email: string, name: string }) => {
+  const handleLogin = (userData?: { email: string, name: string, permissions: Permission[] }) => {
     setIsAuthenticated(true);
     setView('dashboard');
     localStorage.setItem('venda-facil-auth', 'true');
@@ -66,7 +67,45 @@ const App: React.FC = () => {
     setToast({ message, type });
   };
 
+  const hasPermission = (v: View): boolean => {
+    if (!user) return false;
+    if (user.permissions.includes('all')) return true;
+    if (v === 'dashboard' || v === 'login') return true;
+
+    // Convert view to permission
+    const viewToPermission: Record<string, Permission> = {
+      'produtos': 'produtos',
+      'pdv': 'pdv',
+      'relatorios': 'relatorios',
+      'nfe': 'nfe',
+      'fornecedores': 'fornecedores',
+      'funcionarios': 'funcionarios',
+      'estoque': 'estoque',
+      'clientes': 'clientes',
+      'caixa': 'caixa',
+      'financeiro': 'financeiro',
+      'configuracoes': 'configuracoes',
+      'venda_comum': 'pdv',
+      'nfe_manual': 'nfe'
+    };
+
+    return user.permissions.includes(viewToPermission[v]);
+  };
+
   const renderView = () => {
+    if (!hasPermission(view)) {
+      return (
+        <div className="flex flex-col items-center justify-center py-20 text-center animate-in fade-in">
+          <div className="w-20 h-20 bg-red-100 text-red-600 rounded-full flex items-center justify-center mb-4">
+            <ShieldAlert size={40} />
+          </div>
+          <h2 className="text-2xl font-black text-gray-800 tracking-tight">Acesso Negado</h2>
+          <p className="text-gray-500 max-w-md mx-auto mt-2">Você não tem permissão para acessar o módulo <strong>{view.toUpperCase()}</strong>. Entre em contato com o administrador.</p>
+          <Button variant="primary" className="mt-8" onClick={() => setView('dashboard')}>Voltar ao Dashboard</Button>
+        </div>
+      );
+    }
+
     switch (view) {
       case 'dashboard': return <Dashboard />;
       case 'produtos': return <Products onNotify={showToast} />;

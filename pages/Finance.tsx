@@ -81,12 +81,18 @@ const Finance: React.FC<FinanceProps> = ({ onNotify }) => {
         const contasAPagar = accounts.filter(a => a.tipo === 'pagar' && a.status === 'pendente').reduce((acc, a) => acc + a.valor, 0);
         const comissoes = sales.reduce((acc, s) => acc + (s.valor_total * 0.05), 0); // Simulated 5%
 
+        const byPayment = sales.reduce((acc, s) => {
+            acc[s.tipo_pagamento] = (acc[s.tipo_pagamento] || 0) + s.valor_total;
+            return acc;
+        }, {} as Record<string, number>);
+
         return {
             receitaTotal: receitaVendas + accounts.filter(a => a.tipo === 'receber' && a.status === 'pago').reduce((acc, a) => acc + a.valor, 0),
             pendenteReceber: contasAReceber,
             pendentePagar: contasAPagar,
             saldoPrevisto: (receitaVendas + contasAReceber) - (contasAPagar + comissoes),
-            comissoesTotal: comissoes
+            comissoesTotal: comissoes,
+            byPayment
         };
     }, [sales, accounts]);
 
@@ -116,6 +122,55 @@ const Finance: React.FC<FinanceProps> = ({ onNotify }) => {
                     </div>
                 ))}
             </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
+                        <h3 className="font-black text-xs uppercase tracking-widest text-gray-500">Recebimentos por Forma de Pagamento</h3>
+                        <DollarSign size={16} className="text-gray-400" />
+                    </div>
+                    <div className="p-6 space-y-4">
+                        {[
+                            { label: 'Dinheiro', key: 'dinheiro', color: 'bg-green-500' },
+                            { label: 'Cartão de Crédito', key: 'cartao_credito', color: 'bg-blue-500' },
+                            { label: 'Cartão de Débito', key: 'cartao_debito', color: 'bg-indigo-500' },
+                            { label: 'PIX', key: 'pix', color: 'bg-cyan-500' },
+                            { label: 'Fiado / Convênio', key: 'fiado', color: 'bg-orange-500' }
+                        ].map((m) => (
+                            <div key={m.key} className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-2 h-2 rounded-full ${m.color}`}></div>
+                                    <span className="text-sm font-bold text-gray-600">{m.label}</span>
+                                </div>
+                                <span className="text-sm font-black text-gray-800">
+                                    {(totals.byPayment[m.key] || 0) ? (totals.byPayment[m.key] || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00'}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
+                        <h3 className="font-black text-xs uppercase tracking-widest text-gray-500">Resumo de Operações</h3>
+                        <TrendingUp size={16} className="text-gray-400" />
+                    </div>
+                    <div className="p-6 flex items-center justify-center">
+                        <div className="text-center">
+                            <p className="text-3xl font-black text-blue-600">{sales.length}</p>
+                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Vendas Realizadas</p>
+                        </div>
+                        <div className="w-px h-12 bg-gray-100 mx-8"></div>
+                        <div className="text-center">
+                            <p className="text-3xl font-black text-green-600">
+                                {sales.length > 0 ? (sales.reduce((acc, s) => acc + s.valor_total, 0) / sales.length).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00'}
+                            </p>
+                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Ticket Médio</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
 
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">

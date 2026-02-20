@@ -3,8 +3,10 @@ import React, { useState } from 'react';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 
+import { Permission, Employee } from '../types';
+
 interface LoginProps {
-  onLogin: (userData?: { email: string, name: string }) => void;
+  onLogin: (userData?: { email: string, name: string, permissions: Permission[] }) => void;
   onNotify: (message: string, type: 'success' | 'error') => void;
 }
 
@@ -41,10 +43,18 @@ const Login: React.FC<LoginProps> = ({ onLogin, onNotify }) => {
         // Logic for login
         if (email === MASTER_EMAIL && password === MASTER_PASS) {
           onNotify('✅ Login MASTER realizado com sucesso!', 'success');
-          onLogin({ email: MASTER_EMAIL, name: "Usuário Master" });
+          onLogin({ email: MASTER_EMAIL, name: "Usuário Master", permissions: ['all'] });
         } else if (email && password.length >= 4) {
-          onNotify('✅ Login realizado com sucesso!', 'success');
-          onLogin({ email, name: email.split('@')[0] });
+          const employees: Employee[] = JSON.parse(localStorage.getItem('venda-facil-employees') || '[]');
+          const emp = employees.find(e => e.email === email && e.status === 'Ativo');
+
+          if (emp) {
+            onNotify(`✅ Bem-vindo, ${emp.nome}!`, 'success');
+            onLogin({ email, name: emp.nome, permissions: emp.permissoes || [] });
+          } else {
+            onNotify('✅ Login realizado como convidado (Sem Permissões).', 'success');
+            onLogin({ email, name: email.split('@')[0], permissions: [] });
+          }
         } else {
           onNotify('❌ Credenciais inválidas.', 'error');
         }
@@ -67,7 +77,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onNotify }) => {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {isRegistering && (
-            <Input 
+            <Input
               label="Nome Completo"
               placeholder="Ex: João Silva"
               value={name}
@@ -77,7 +87,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onNotify }) => {
             />
           )}
 
-          <Input 
+          <Input
             label="E-mail"
             type="email"
             placeholder="seu@email.com"
@@ -86,8 +96,8 @@ const Login: React.FC<LoginProps> = ({ onLogin, onNotify }) => {
             required
             className="border-gray-300 focus:border-blue-500"
           />
-          
-          <Input 
+
+          <Input
             label="Senha"
             type="password"
             placeholder="••••••••"
@@ -98,7 +108,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onNotify }) => {
           />
 
           {isRegistering && (
-            <Input 
+            <Input
               label="Confirmar Senha"
               type="password"
               placeholder="••••••••"
@@ -121,7 +131,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onNotify }) => {
         </form>
 
         <div className="mt-6 text-center">
-          <button 
+          <button
             type="button"
             onClick={() => setIsRegistering(!isRegistering)}
             className="text-gray-600 text-sm hover:text-blue-600 transition-colors"

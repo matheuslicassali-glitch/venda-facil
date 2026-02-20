@@ -4,7 +4,8 @@ import { Users, Plus, Search, Edit, Trash2, Mail, BadgeCheck, ShieldCheck, UserC
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
-import { Employee } from '../types';
+import { Employee, Permission } from '../types';
+import { db } from '../utils/databaseService';
 
 interface EmployeesProps {
   onNotify: (message: string, type: 'success' | 'error') => void;
@@ -24,15 +25,32 @@ const Employees: React.FC<EmployeesProps> = ({ onNotify }) => {
     cargo: 'Vendedor',
     cpf: '',
     email: '',
-    comissao: '5'
+    comissao: '5',
+    permissoes: [] as Permission[]
   });
 
+  const roleDefaults: Record<string, Permission[]> = {
+    'Administrador': ['all'],
+    'Gerente': ['produtos', 'pdv', 'relatorios', 'nfe', 'fornecedores', 'estoque', 'clientes', 'caixa', 'financeiro'],
+    'Vendedor': ['pdv', 'clientes', 'caixa'],
+    'Estoquista': ['produtos', 'estoque', 'fornecedores']
+  };
+
   useEffect(() => {
-    const saved = localStorage.getItem('venda-facil-employees');
-    if (saved) {
-      setEmployees(JSON.parse(saved));
-    }
+    loadEmployees();
   }, []);
+
+  const loadEmployees = async () => {
+    setLoading(true);
+    try {
+      const data = await db.employees.list();
+      setEmployees(data);
+    } catch (err) {
+      onNotify('❌ Erro ao carregar equipe.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const saveToStorage = (newEmps: Employee[]) => {
     setEmployees(newEmps);
@@ -47,7 +65,8 @@ const Employees: React.FC<EmployeesProps> = ({ onNotify }) => {
         cargo: emp.cargo,
         cpf: emp.cpf,
         email: emp.email,
-        comissao: emp.comissao?.toString() || '5'
+        comissao: emp.comissao?.toString() || '5',
+        permissoes: emp.permissoes || []
       });
     } else {
       setEditingEmp(null);
@@ -56,55 +75,66 @@ const Employees: React.FC<EmployeesProps> = ({ onNotify }) => {
         cargo: 'Vendedor',
         cpf: '',
         email: '',
-        comissao: '5'
+        comissao: '5',
+        permissoes: roleDefaults['Vendedor']
       });
     }
     setIsModalOpen(true);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    setTimeout(() => {
-      const empData: Employee = {
-        id: editingEmp ? editingEmp.id : Math.random().toString(36).substr(2, 9),
-        nome: formData.nome,
-        cargo: formData.cargo as any,
-        cpf: formData.cpf,
-        email: formData.email,
-        status: editingEmp ? editingEmp.status : 'Ativo',
-        comissao: parseFloat(formData.comissao)
-      };
+    const empData: Employee = {
+      id: editingEmp ? editingEmp.id : Math.random().toString(36).substr(2, 9),
+      nome: formData.nome,
+      cargo: formData.cargo as any,
+      cpf: formData.cpf,
+      email: formData.email,
+      status: editingEmp ? editingEmp.status : 'Ativo',
+      comissao: parseFloat(formData.comissao),
+      permissoes: formData.permissoes
+    };
 
-      if (editingEmp) {
-        const updated = employees.map(emp => emp.id === editingEmp.id ? empData : emp);
-        saveToStorage(updated);
-        onNotify('✅ Funcionário atualizado!', 'success');
-      } else {
-        saveToStorage([...employees, empData]);
-        onNotify('✅ Novo funcionário cadastrado!', 'success');
-      }
+    try {
+      await db.employees.upsert(empData);
+      onNotify(`✅ Funcionário ${editingEmp ? 'atualizado' : 'cadastrado'}!`, 'success');
       setIsModalOpen(false);
+      loadEmployees();
+    } catch (err) {
+      onNotify('❌ Erro ao salvar funcionário.', 'error');
+    } finally {
       setLoading(false);
-    }, 800);
+    }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!empToDelete) return;
-    const updated = employees.filter(emp => emp.id !== empToDelete.id);
-    saveToStorage(updated);
-    setIsDeleteModalOpen(false);
-    setEmpToDelete(null);
-    onNotify('🗑️ Funcionário removido.', 'success');
+    setLoading(true);
+    try {
+      const { error } = await (db as any).supabase.from('funcionarios').delete().eq('id', empToDelete.id);
+      if (error) throw error;
+      onNotify('🗑️ Funcionário removido.', 'success');
+      setIsDeleteModalOpen(false);
+      setEmpToDelete(null);
+      loadEmployees();
+    } catch (err) {
+      onNotify('❌ Erro ao remover funcionário.', 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const toggleStatus = (id: string) => {
-    const updated = employees.map(emp =>
-      emp.id === id ? { ...emp, status: emp.status === 'Ativo' ? 'Inativo' : ('Ativo' as any) } : emp
-    );
-    saveToStorage(updated);
-    onNotify('Status atualizado!', 'success');
+  const toggleStatus = async (emp: Employee) => {
+    const newStatus = emp.status === 'Ativo' ? 'Inativo' : 'Ativo';
+    try {
+      await db.employees.upsert({ ...emp, status: newStatus as any });
+      onNotify('Status atualizado!', 'success');
+      loadEmployees();
+    } catch (err) {
+      onNotify('❌ Erro ao atualizar status.', 'error');
+    }
   };
 
   const filtered = employees.filter(emp =>
@@ -172,13 +202,20 @@ const Employees: React.FC<EmployeesProps> = ({ onNotify }) => {
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4">{getBadge(emp.cargo)}</td>
+                  <td className="px-6 py-4">
+                    {getBadge(emp.cargo)}
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {emp.permissoes?.map(p => (
+                        <span key={p} className="text-[8px] bg-gray-100 text-gray-500 px-1 rounded font-bold uppercase">{p}</span>
+                      ))}
+                    </div>
+                  </td>
                   <td className="px-6 py-4">
                     <span className="text-sm font-black text-gray-700">{emp.comissao}%</span>
                   </td>
                   <td className="px-6 py-4">
                     <button
-                      onClick={() => toggleStatus(emp.id)}
+                      onClick={() => toggleStatus(emp)}
                       className={`px-3 py-1 rounded-full text-[10px] font-black uppercase transition-all ${emp.status === 'Ativo' ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-red-100 text-red-700 hover:bg-red-200'
                         }`}
                     >
@@ -215,7 +252,14 @@ const Employees: React.FC<EmployeesProps> = ({ onNotify }) => {
               <select
                 className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg font-bold text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 value={formData.cargo}
-                onChange={e => setFormData({ ...formData, cargo: e.target.value })}
+                onChange={e => {
+                  const newCargo = e.target.value;
+                  setFormData({
+                    ...formData,
+                    cargo: newCargo,
+                    permissoes: roleDefaults[newCargo] || []
+                  });
+                }}
               >
                 <option value="Vendedor">Vendedor</option>
                 <option value="Gerente">Gerente</option>
@@ -224,9 +268,47 @@ const Employees: React.FC<EmployeesProps> = ({ onNotify }) => {
               </select>
             </div>
           </div>
+          <p className="text-[10px] text-blue-600 font-bold uppercase italic bg-blue-50 p-2 rounded">
+            * Ao trocar o cargo, as permissões padrão são sugeridas automaticamente.
+          </p>
           <div className="grid grid-cols-2 gap-4">
             <Input label="E-mail" type="email" placeholder="maria@venda-facil.com" required value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
             <Input label="Comissão (%)" type="number" placeholder="5" value={formData.comissao} onChange={e => setFormData({ ...formData, comissao: e.target.value })} />
+          </div>
+
+          <div className="space-y-3">
+            <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Permissões de Acesso</label>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 bg-gray-50 p-4 rounded-xl border border-gray-100">
+              {[
+                { id: 'produtos', label: 'Produtos' },
+                { id: 'pdv', label: 'PDV / Vendas' },
+                { id: 'estoque', label: 'Estoque' },
+                { id: 'caixa', label: 'Caixa' },
+                { id: 'financeiro', label: 'Financeiro' },
+                { id: 'clientes', label: 'Clientes' },
+                { id: 'funcionarios', label: 'Funcionários' },
+                { id: 'fornecedores', label: 'Fornecedores' },
+                { id: 'relatorios', label: 'Relatórios' },
+                { id: 'configuracoes', label: 'Configurações' },
+                { id: 'nfe', label: 'NFe' },
+                { id: 'all', label: 'Acesso Total' }
+              ].map(p => (
+                <label key={p.id} className="flex items-center gap-2 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    checked={formData.permissoes.includes(p.id as Permission)}
+                    onChange={(e) => {
+                      const perms = e.target.checked
+                        ? [...formData.permissoes, p.id as Permission]
+                        : formData.permissoes.filter(item => item !== p.id);
+                      setFormData({ ...formData, permissoes: perms });
+                    }}
+                  />
+                  <span className="text-xs font-bold text-gray-600 group-hover:text-blue-600 transition-colors uppercase">{p.label}</span>
+                </label>
+              ))}
+            </div>
           </div>
 
           <div className="flex justify-end gap-3 mt-8 pt-4 border-t">

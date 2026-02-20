@@ -5,6 +5,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { Product } from '../types';
+import { db } from '../utils/databaseService';
 
 interface ProductsProps {
   onNotify: (message: string, type: 'success' | 'error') => void;
@@ -44,11 +45,20 @@ const Products: React.FC<ProductsProps> = ({ onNotify }) => {
   });
 
   useEffect(() => {
-    const saved = localStorage.getItem('venda-facil-products');
-    if (saved) {
-      setProducts(JSON.parse(saved));
-    }
+    loadProducts();
   }, []);
+
+  const loadProducts = async () => {
+    setLoading(true);
+    try {
+      const data = await db.products.list();
+      setProducts(data);
+    } catch (err) {
+      onNotify('❌ Erro ao carregar produtos.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const saveToStorage = (newProducts: Product[]) => {
     setProducts(newProducts);
@@ -108,55 +118,60 @@ const Products: React.FC<ProductsProps> = ({ onNotify }) => {
     setIsModalOpen(true);
   };
 
-  const handleSaveProduct = (e: React.FormEvent) => {
+  const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    setTimeout(() => {
-      const productData: Product = {
-        id: editingProduct ? editingProduct.id : Math.random().toString(36).substr(2, 9),
-        nome: formData.nome,
-        sku: formData.sku,
-        codigo_barras: formData.codigo_barras,
-        preco_venda: parseFloat(formData.preco_venda),
-        preco_custo: parseFloat(formData.preco_custo),
-        estoque_atual: parseInt(formData.estoque_atual),
-        estoque_minimo: parseInt(formData.estoque_minimo),
-        unidade: formData.unidade as any,
-        categoria: formData.categoria,
-        validade: formData.validade,
-        ncm: formData.ncm,
-        cest: formData.cest,
-        origem: formData.origem,
-        cfop: formData.cfop,
-        cst_csosn: formData.cst_csosn,
-        pis_cst: formData.pis_cst,
-        pis_aliquota: parseFloat(formData.pis_aliquota),
-        cofins_cst: formData.cofins_cst,
-        cofins_aliquota: parseFloat(formData.cofins_aliquota),
-        icms_aliquota: parseFloat(formData.icms_aliquota)
-      };
+    const productData: Product = {
+      id: editingProduct ? editingProduct.id : Math.random().toString(36).substr(2, 9),
+      nome: formData.nome,
+      sku: formData.sku,
+      codigo_barras: formData.codigo_barras,
+      preco_venda: parseFloat(formData.preco_venda),
+      preco_custo: parseFloat(formData.preco_custo),
+      estoque_atual: parseInt(formData.estoque_atual),
+      estoque_minimo: parseInt(formData.estoque_minimo),
+      unidade: formData.unidade as any,
+      categoria: formData.categoria,
+      validade: formData.validade,
+      ncm: formData.ncm,
+      cest: formData.cest,
+      origem: formData.origem,
+      cfop: formData.cfop,
+      cst_csosn: formData.cst_csosn,
+      pis_cst: formData.pis_cst,
+      pis_aliquota: parseFloat(formData.pis_aliquota),
+      cofins_cst: formData.cofins_cst,
+      cofins_aliquota: parseFloat(formData.cofins_aliquota),
+      icms_aliquota: parseFloat(formData.icms_aliquota)
+    };
 
-      if (editingProduct) {
-        const updated = products.map(p => p.id === editingProduct.id ? productData : p);
-        saveToStorage(updated);
-        onNotify('✅ Produto atualizado com sucesso!', 'success');
-      } else {
-        saveToStorage([...products, productData]);
-        onNotify('✅ Produto cadastrado com sucesso!', 'success');
-      }
+    try {
+      await db.products.upsert(productData);
+      onNotify(`✅ Produto ${editingProduct ? 'atualizado' : 'cadastrado'} com sucesso!`, 'success');
       setIsModalOpen(false);
+      loadProducts();
+    } catch (err) {
+      onNotify('❌ Erro ao salvar produto.', 'error');
+    } finally {
       setLoading(false);
-    }, 800);
+    }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!productToDelete) return;
-    const updated = products.filter(p => p.id !== productToDelete.id);
-    saveToStorage(updated);
-    setIsDeleteModalOpen(false);
-    setProductToDelete(null);
-    onNotify('🗑️ Produto removido com sucesso!', 'success');
+    setLoading(true);
+    try {
+      await db.products.delete(productToDelete.id);
+      onNotify('🗑️ Produto removido com sucesso!', 'success');
+      setIsDeleteModalOpen(false);
+      setProductToDelete(null);
+      loadProducts();
+    } catch (err) {
+      onNotify('❌ Erro ao remover produto.', 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const filteredProducts = products.filter(p =>

@@ -117,6 +117,8 @@ export interface Supplier {
   endereco: string;
 }
 
+export type Permission = 'all' | 'produtos' | 'pdv' | 'relatorios' | 'nfe' | 'fornecedores' | 'funcionarios' | 'estoque' | 'clientes' | 'caixa' | 'financeiro' | 'configuracoes';
+
 export interface Employee {
   id: string;
   nome: string;
@@ -126,6 +128,7 @@ export interface Employee {
   status: 'Ativo' | 'Inativo';
   comissao?: number;
   pin?: string; // For manager approval
+  permissoes: Permission[];
 }
 
 export interface Invoice {
