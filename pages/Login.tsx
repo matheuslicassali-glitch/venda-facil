@@ -28,6 +28,9 @@ const Login: React.FC<LoginProps> = ({ onLogin, onNotify }) => {
 
     // Simulate network delay
     setTimeout(() => {
+      const inputEmail = email.toLowerCase().trim();
+      const inputPass = password.trim();
+
       if (isRegistering) {
         if (password !== confirmPassword) {
           onNotify('❌ As senhas não coincidem.', 'error');
@@ -41,7 +44,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onNotify }) => {
         setLoading(false);
       } else {
         // Logic for login
-        if (email === MASTER_EMAIL && password === MASTER_PASS) {
+        if (inputEmail === MASTER_EMAIL.toLowerCase() && inputPass === MASTER_PASS) {
           const allPermissions: Permission[] = [
             'all', 'produtos', 'pdv', 'relatorios', 'nfe', 'fornecedores',
             'funcionarios', 'estoque', 'clientes', 'caixa', 'financeiro', 'configuracoes'
