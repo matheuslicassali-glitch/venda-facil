@@ -18,6 +18,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { Sale, Employee, FinancialAccount } from '../types';
+import { db } from '../utils/databaseService';
 
 interface FinanceProps {
     onNotify: (message: string, type: 'success' | 'error') => void;
@@ -39,40 +40,67 @@ const Finance: React.FC<FinanceProps> = ({ onNotify }) => {
     });
 
     useEffect(() => {
-        setAccounts(JSON.parse(localStorage.getItem('venda-facil-finance') || '[]'));
-        setSales(JSON.parse(localStorage.getItem('venda-facil-sales') || '[]'));
-        setEmployees(JSON.parse(localStorage.getItem('venda-facil-employees') || '[]'));
+        loadFinanceData();
     }, []);
+
+    const loadFinanceData = async () => {
+        setLoading(true);
+        try {
+            const [accs, salesData, emps] = await Promise.all([
+                db.finance.list(),
+                db.sales.list(),
+                db.employees.list()
+            ]);
+            setAccounts(accs);
+            setSales(salesData);
+            setEmployees(emps);
+        } catch (err) {
+            console.error(err);
+            onNotify('❌ Erro ao carregar dados financeiros.', 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const saveToStorage = (newAccounts: FinancialAccount[]) => {
         setAccounts(newAccounts);
         localStorage.setItem('venda-facil-finance', JSON.stringify(newAccounts));
     };
 
-    const handleSave = (e: React.FormEvent) => {
+    const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
-        setTimeout(() => {
-            const newAcc: FinancialAccount = {
-                id: Math.random().toString(36).substr(2, 9),
-                descricao: formData.descricao,
-                valor: parseFloat(formData.valor),
-                tipo: formData.tipo,
-                vencimento: formData.vencimento,
-                status: 'pendente',
-                categoria: formData.categoria
-            };
-            saveToStorage([...accounts, newAcc]);
+        const newAcc: FinancialAccount = {
+            id: Math.random().toString(36).substr(2, 9),
+            descricao: formData.descricao,
+            valor: parseFloat(formData.valor),
+            tipo: formData.tipo,
+            vencimento: formData.vencimento,
+            status: 'pendente',
+            categoria: formData.categoria
+        };
+
+        try {
+            await db.finance.upsert(newAcc);
             onNotify('✅ Lançamento financeiro registrado!', 'success');
             setIsModalOpen(false);
+            loadFinanceData();
+        } catch (err) {
+            onNotify('❌ Erro ao salvar lançamento.', 'error');
+        } finally {
             setLoading(false);
-        }, 500);
+        }
     };
 
-    const toggleStatus = (id: string) => {
-        const updated = accounts.map(a => a.id === id ? { ...a, status: a.status === 'pago' ? 'pendente' : 'pago' as any } : a);
-        saveToStorage(updated);
-        onNotify('Status atualizado!', 'success');
+    const toggleStatus = async (account: FinancialAccount) => {
+        const newStatus = account.status === 'pago' ? 'pendente' : 'pago';
+        try {
+            await db.finance.upsert({ ...account, status: newStatus as any });
+            onNotify('Status atualizado!', 'success');
+            loadFinanceData();
+        } catch (err) {
+            onNotify('❌ Erro ao atualizar status.', 'error');
+        }
     };
 
     const totals = useMemo(() => {
@@ -209,7 +237,7 @@ const Finance: React.FC<FinanceProps> = ({ onNotify }) => {
                                         {a.tipo === 'pagar' ? '-' : '+'}{a.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                     </td>
                                     <td className="px-6 py-4 text-center">
-                                        <button onClick={() => toggleStatus(a.id)} className="text-[10px] font-black text-blue-600 uppercase hover:underline">
+                                        <button onClick={() => toggleStatus(a)} className="text-[10px] font-black text-blue-600 uppercase hover:underline">
                                             {a.status === 'pago' ? 'Estornar' : 'Baixar Pagamento'}
                                         </button>
                                     </td>

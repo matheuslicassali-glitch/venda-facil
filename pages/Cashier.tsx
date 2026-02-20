@@ -5,6 +5,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { CashSession, CashTransaction, Sale } from '../types';
+import { db } from '../utils/databaseService';
 
 interface CashierProps {
     onNotify: (message: string, type: 'success' | 'error') => void;
@@ -27,46 +28,71 @@ const Cashier: React.FC<CashierProps> = ({ onNotify }) => {
     });
 
     useEffect(() => {
-        const savedSession = localStorage.getItem('venda-facil-cash-session');
-        const savedTransactions = localStorage.getItem('venda-facil-cash-transactions');
-        const savedSales = localStorage.getItem('venda-facil-sales');
-        const savedHistory = localStorage.getItem('venda-facil-cash-history');
-
-        if (savedSession) setSession(JSON.parse(savedSession));
-        if (savedTransactions) setTransactions(JSON.parse(savedTransactions));
-        if (savedSales) setSales(JSON.parse(savedSales));
-        if (savedHistory) setHistory(JSON.parse(savedHistory));
+        loadCashierData();
     }, []);
+
+    const loadCashierData = async () => {
+        setLoading(true);
+        try {
+            const active = await db.cashier.getActiveSession();
+            setSession(active);
+
+            const [historyData, salesData] = await Promise.all([
+                db.cashier.listHistory(),
+                db.sales.list()
+            ]);
+
+            setHistory(historyData);
+            setSales(salesData);
+
+            if (active) {
+                const transData = await db.cashier.getTransactions(active.id);
+                setTransactions(transData);
+            }
+        } catch (err) {
+            console.error(err);
+            onNotify('❌ Erro ao sincronizar dados do caixa.', 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const saveSession = (s: CashSession | null) => {
         setSession(s);
-        if (s) localStorage.setItem('venda-facil-cash-session', JSON.stringify(s));
-        else localStorage.removeItem('venda-facil-cash-session');
     };
 
     const saveTransactions = (t: CashTransaction[]) => {
         setTransactions(t);
-        localStorage.setItem('venda-facil-cash-transactions', JSON.stringify(t));
     };
 
-    const handleOpenCash = (e: React.FormEvent) => {
+    const handleOpenCash = async (e: React.FormEvent) => {
         e.preventDefault();
-        const newSession: CashSession = {
-            id: Math.random().toString(36).substr(2, 9),
-            aberto_em: new Date().toISOString(),
-            valor_abertura: parseFloat(formData.valor),
-            valor_fechamento_esperado: parseFloat(formData.valor),
-            status: 'aberto',
-            vendedor_id: '1' // master
-        };
-        saveSession(newSession);
-        setIsModalOpen(null);
-        onNotify('🔓 Caixa aberto com sucesso!', 'success');
+        setLoading(true);
+        try {
+            const newSession: CashSession = {
+                id: Math.random().toString(36).substr(2, 9),
+                aberto_em: new Date().toISOString(),
+                valor_abertura: parseFloat(formData.valor),
+                valor_fechamento_esperado: parseFloat(formData.valor),
+                status: 'aberto',
+                vendedor_id: '1' // master
+            };
+            await db.cashier.openSession(newSession);
+            setSession(newSession);
+            setIsModalOpen(null);
+            onNotify('🔓 Caixa aberto com sucesso!', 'success');
+            loadCashierData();
+        } catch (err) {
+            onNotify('❌ Erro ao abrir caixa.', 'error');
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const handleTransaction = (e: React.FormEvent) => {
+    const handleTransaction = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!session) return;
+        setLoading(true);
 
         const val = parseFloat(formData.valor);
         const newTrans: CashTransaction = {
@@ -78,39 +104,49 @@ const Cashier: React.FC<CashierProps> = ({ onNotify }) => {
             data: new Date().toISOString()
         };
 
-        const updatedTrans = [...transactions, newTrans];
-        saveTransactions(updatedTrans);
+        try {
+            await db.cashier.addTransaction(newTrans);
 
-        const updatedSession = { ...session };
-        if (transType === 'sangria') updatedSession.valor_fechamento_esperado -= val;
-        else updatedSession.valor_fechamento_esperado += val;
+            const updatedExpected = transType === 'sangria'
+                ? session.valor_fechamento_esperado - val
+                : session.valor_fechamento_esperado + val;
 
-        saveSession(updatedSession);
-        setIsModalOpen(null);
-        onNotify(`✅ ${transType === 'sangria' ? 'Sangria' : 'Suprimento'} realizada!`, 'success');
+            await db.cashier.updateSession(session.id, { valor_fechamento_esperado: updatedExpected });
+
+            onNotify(`✅ ${transType === 'sangria' ? 'Sangria' : 'Suprimento'} realizada!`, 'success');
+            setIsModalOpen(null);
+            loadCashierData();
+        } catch (err) {
+            onNotify('❌ Erro ao registrar movimentação.', 'error');
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const handleCloseCash = (e: React.FormEvent) => {
+    const handleCloseCash = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!session) return;
+        setLoading(true);
 
         const valInformado = parseFloat(formData.valor_informado);
         const diff = valInformado - session.valor_fechamento_esperado;
 
-        const closedSession: CashSession = {
-            ...session,
-            fechado_em: new Date().toISOString(),
-            valor_fechamento_informado: valInformado,
-            status: 'fechado' as const
-        };
+        try {
+            await db.cashier.updateSession(session.id, {
+                fechado_em: new Date().toISOString(),
+                valor_fechamento_informado: valInformado,
+                status: 'fechado'
+            });
 
-        const updatedHistory = [closedSession, ...history];
-        setHistory(updatedHistory);
-        localStorage.setItem('venda-facil-cash-history', JSON.stringify(updatedHistory));
-
-        saveSession(null);
-        setIsModalOpen(null);
-        onNotify(`🔒 Caixa fechado. Diferença: ${diff.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, diff === 0 ? 'success' : 'error');
+            onNotify(`🔒 Caixa fechado. Diferença: ${diff.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, diff === 0 ? 'success' : 'error');
+            setIsModalOpen(null);
+            setSession(null);
+            loadCashierData();
+        } catch (err) {
+            onNotify('❌ Erro ao fechar caixa.', 'error');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const getSessionSales = (s: CashSession) => {

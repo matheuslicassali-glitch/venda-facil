@@ -29,6 +29,7 @@ import { Modal } from '../components/ui/Modal';
 import { Product, Sale, SaleItem, Client, CashSession, Employee, CompanySettings } from '../types';
 import { generateNFeXML } from '../utils/nfeXmlService';
 import { signNFeXML } from '../utils/signatureService';
+import { db } from '../utils/databaseService';
 
 interface POSProps {
   onNotify: (message: string, type: 'success' | 'error') => void;
@@ -51,18 +52,12 @@ const POS: React.FC<POSProps> = ({ onNotify }) => {
   const [currentUser, setCurrentUser] = useState<Employee | null>(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [adminPin, setAdminPin] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const barcodeInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setProducts(JSON.parse(localStorage.getItem('venda-facil-products') || '[]'));
-    setClients(JSON.parse(localStorage.getItem('venda-facil-clients') || '[]'));
-    setEmployees(JSON.parse(localStorage.getItem('venda-facil-employees') || '[]'));
-    setSession(JSON.parse(localStorage.getItem('venda-facil-cash-session') || 'null'));
-
-    const userEmail = JSON.parse(localStorage.getItem('venda-facil-user') || '{}').email;
-    const user = JSON.parse(localStorage.getItem('venda-facil-employees') || '[]').find((e: any) => e.email === userEmail);
-    setCurrentUser(user || { cargo: 'Vendedor' });
+    loadPOSData();
 
     window.addEventListener('online', () => setIsOffline(false));
     window.addEventListener('offline', () => setIsOffline(true));
@@ -122,6 +117,35 @@ const POS: React.FC<POSProps> = ({ onNotify }) => {
       window.removeEventListener('offline', () => setIsOffline(true));
       window.removeEventListener('keydown', handleKeyDown);
     };
+  }, [cart, isPaymentModalOpen, isAdminAuthOpen]);
+
+  const loadPOSData = async () => {
+    setLoading(true);
+    try {
+      const [prods, clis, emps, activeSession] = await Promise.all([
+        db.products.list(),
+        db.clients.list(),
+        db.employees.list(),
+        db.cashier.getActiveSession()
+      ]);
+      setProducts(prods);
+      setClients(clis);
+      setEmployees(emps);
+      setSession(activeSession);
+
+      const userEmail = JSON.parse(localStorage.getItem('venda-facil-user') || '{}').email;
+      const user = emps.find(e => e.email === userEmail);
+      setCurrentUser(user || { cargo: 'Vendedor' } as any);
+    } catch (err) {
+      console.error(err);
+      onNotify('❌ Erro ao carregar dados do PDV.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    barcodeInputRef.current?.focus();
   }, [cart, isPaymentModalOpen, isAdminAuthOpen]);
 
   const handleSearch = (term: string) => {
@@ -229,16 +253,18 @@ const POS: React.FC<POSProps> = ({ onNotify }) => {
   const finalTotal = total - parseFloat(discount || '0');
   const change = parseFloat(receiveAmount || '0') - finalTotal;
 
-  const handleFinalizeSale = () => {
+  const handleFinalizeSale = async () => {
     if (paymentMethod === 'fiado' && (!selectedClient || (selectedClient.limite_credito - selectedClient.saldo_devedor < finalTotal))) {
       onNotify('❌ Erro no pagamento fiado (Cliente não selecionado ou sem limite)!', 'error');
       return;
     }
 
+    setLoading(true);
     const nfe_simulated = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // In a real app, settings would be in DB too
     const companySettings: CompanySettings = JSON.parse(localStorage.getItem('venda-facil-settings') || '{}');
 
-    // Geração e Assinatura do XML
     let generatedXml = '';
     let chaveAcesso = '';
 
@@ -250,8 +276,6 @@ const POS: React.FC<POSProps> = ({ onNotify }) => {
         } as Sale, selectedClient, companySettings, products);
 
         generatedXml = signNFeXML(rawXml);
-
-        // Extrai a chave de acesso do atributo Id="NFe..."
         const keyMatch = generatedXml.match(/Id="NFe(\d+)"/);
         chaveAcesso = keyMatch ? keyMatch[1] : '';
       }
@@ -259,8 +283,9 @@ const POS: React.FC<POSProps> = ({ onNotify }) => {
       console.error('Erro ao gerar XML:', err);
     }
 
+    const saleId = Math.random().toString(36).substr(2, 9);
     const newSale: Sale = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: saleId,
       data_venda: new Date().toISOString(),
       valor_total: finalTotal,
       desconto_total: parseFloat(discount),
@@ -275,33 +300,45 @@ const POS: React.FC<POSProps> = ({ onNotify }) => {
       chave_acesso: chaveAcesso
     };
 
-    const sales = JSON.parse(localStorage.getItem('venda-facil-sales') || '[]');
-    localStorage.setItem('venda-facil-sales', JSON.stringify([...sales, newSale]));
+    try {
+      // 1. Create Sale and Items
+      await db.sales.create(newSale);
 
-    const updatedProducts = products.map(p => {
-      const itemInCart = cart.find(item => item.produto_id === p.id);
-      return itemInCart ? { ...p, estoque_atual: p.estoque_atual - itemInCart.quantidade } : p;
-    });
-    localStorage.setItem('venda-facil-products', JSON.stringify(updatedProducts));
+      // 2. Update Product Stocks
+      await Promise.all(cart.map(item => {
+        const prod = products.find(p => p.id === item.produto_id);
+        if (prod) {
+          return db.products.updateStock(prod.id, prod.estoque_atual - item.quantidade);
+        }
+        return Promise.resolve();
+      }));
 
-    if (paymentMethod === 'fiado' && selectedClient) {
-      const updatedClients = clients.map(c => c.id === selectedClient.id ? { ...c, saldo_devedor: c.saldo_devedor + finalTotal } : c);
-      localStorage.setItem('venda-facil-clients', JSON.stringify(updatedClients));
+      // 3. Update Client Debt (if fiado)
+      if (paymentMethod === 'fiado' && selectedClient) {
+        await db.clients.updateDebt(selectedClient.id, selectedClient.saldo_devedor + finalTotal);
+      }
+
+      // 4. Update Cashier Balance (if dinheiro)
+      if (paymentMethod === 'dinheiro' && session) {
+        await db.cashier.updateSession(session.id, {
+          valor_fechamento_esperado: session.valor_fechamento_esperado + finalTotal
+        });
+      }
+
+      onNotify(isOffline ? '⚠️ Venda em Contingência (Offline)!' : '✅ Venda e NFC-e emitida!', 'success');
+      setCart([]);
+      setIsPaymentModalOpen(false);
+      setSelectedClient(null);
+      setDiscount('0');
+      setReceiveAmount('');
+      loadPOSData();
+    } catch (err) {
+      console.error(err);
+      onNotify('❌ Erro ao finalizar venda no banco de dados.', 'error');
+    } finally {
+      setLoading(false);
+      barcodeInputRef.current?.focus();
     }
-
-    if (paymentMethod === 'dinheiro' && session) {
-      const updatedSession = { ...session, valor_fechamento_esperado: session.valor_fechamento_esperado + finalTotal };
-      localStorage.setItem('venda-facil-cash-session', JSON.stringify(updatedSession));
-      window.dispatchEvent(new Event('storage'));
-    }
-
-    onNotify(isOffline ? '⚠️ Venda em Contingência (Offline)!' : '✅ Venda e NFC-e emitida!', 'success');
-    setCart([]);
-    setIsPaymentModalOpen(false);
-    setSelectedClient(null);
-    setDiscount('0');
-    setReceiveAmount('');
-    barcodeInputRef.current?.focus();
   };
 
   if (!session) {

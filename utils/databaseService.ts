@@ -16,6 +16,10 @@ export const db = {
         async delete(id: string) {
             const { error } = await supabase.from('produtos').delete().eq('id', id);
             if (error) throw error;
+        },
+        async updateStock(id: string, newStock: number) {
+            const { error } = await supabase.from('produtos').update({ estoque_atual: newStock }).eq('id', id);
+            if (error) throw error;
         }
     },
 
@@ -28,6 +32,10 @@ export const db = {
         },
         async upsert(client: Client) {
             const { error } = await supabase.from('clientes').upsert(client);
+            if (error) throw error;
+        },
+        async updateDebt(id: string, newDebt: number) {
+            const { error } = await supabase.from('clientes').update({ saldo_devedor: newDebt }).eq('id', id);
             if (error) throw error;
         }
     },
@@ -97,8 +105,8 @@ export const db = {
             const { error } = await supabase.from('caixa_sessoes').insert(session);
             if (error) throw error;
         },
-        async closeSession(id: string, closingData: Partial<CashSession>) {
-            const { error } = await supabase.from('caixa_sessoes').update(closingData).eq('id', id);
+        async updateSession(id: string, data: Partial<CashSession>) {
+            const { error } = await supabase.from('caixa_sessoes').update(data).eq('id', id);
             if (error) throw error;
         },
         async addTransaction(transaction: CashTransaction) {
@@ -106,9 +114,27 @@ export const db = {
             if (error) throw error;
         },
         async listHistory() {
-            const { data, error } = await supabase.from('caixa_sessoes').select('*').order('aberto_em', { ascending: false });
+            const { data, error } = await supabase.from('caixa_sessoes').select('*').order('aberto_em', { ascending: false }).limit(20);
             if (error) throw error;
             return data as CashSession[];
+        },
+        async getTransactions(sessionId: string) {
+            const { data, error } = await supabase.from('caixa_movimentacoes').select('*').eq('caixa_id', sessionId).order('data', { ascending: false });
+            if (error) throw error;
+            return data as CashTransaction[];
         }
-    }
+    },
+    // FINANCE
+    finance: {
+        async list() {
+            const { data, error } = await supabase.from('financeiro_contas').select('*').order('vencimento');
+            if (error) throw error;
+            return data as FinancialAccount[];
+        },
+        async upsert(account: FinancialAccount) {
+            const { error } = await supabase.from('financeiro_contas').upsert(account);
+            if (error) throw error;
+        }
+    },
+    supabase
 };
