@@ -68,7 +68,7 @@ const App: React.FC = () => {
   };
 
   const hasPermission = (v: View): boolean => {
-    if (!user) return false;
+    if (!user || !user.permissions) return false;
     if (user.permissions.includes('all')) return true;
     if (v === 'dashboard' || v === 'login') return true;
 
@@ -89,7 +89,10 @@ const App: React.FC = () => {
       'nfe_manual': 'nfe'
     };
 
-    return user.permissions.includes(viewToPermission[v]);
+    const requiredPermission = viewToPermission[v];
+    if (!requiredPermission) return true; // Allow if no specific permission mapped
+
+    return Array.isArray(user.permissions) && user.permissions.includes(requiredPermission);
   };
 
   const renderView = () => {
