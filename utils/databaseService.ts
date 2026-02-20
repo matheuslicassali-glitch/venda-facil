@@ -136,5 +136,12 @@ export const db = {
             if (error) throw error;
         }
     },
+    settings: {
+        async get() {
+            const { data, error } = await supabase.from('empresa_configuracoes').select('*').single();
+            if (error && error.code !== 'PGRST116') throw error;
+            return data;
+        }
+    },
     supabase
 };

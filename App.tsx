@@ -29,8 +29,22 @@ const App: React.FC = () => {
   // Simple authentication state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<{ email: string, name: string, permissions: Permission[] } | null>(null);
+  const [isBlocked, setIsBlocked] = useState(false);
 
   useEffect(() => {
+    // Check License Status
+    const checkLicense = async () => {
+      try {
+        const { data } = await db.supabase.from('empresa_configuracoes').select('status_licenca').single();
+        if (data && data.status_licenca === 'bloqueado') {
+          setIsBlocked(true);
+        }
+      } catch (err) {
+        console.error('Erro ao verificar licença:', err);
+      }
+    };
+    checkLicense();
+
     const auth = localStorage.getItem('venda-facil-auth');
     const userData = localStorage.getItem('venda-facil-user');
     if (auth === 'true') {
@@ -136,6 +150,30 @@ const App: React.FC = () => {
       );
     }
   };
+
+  if (isBlocked) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
+        <div className="bg-white p-8 rounded-2xl shadow-2xl max-w-md w-full text-center animate-in fade-in zoom-in duration-500">
+          <div className="w-20 h-20 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
+            <ShieldAlert size={48} />
+          </div>
+          <h1 className="text-3xl font-black text-gray-900 mb-2">Sistema Bloqueado</h1>
+          <p className="text-gray-500 mb-8">Detectamos que a licença do seu aplicativo expirou ou o pagamento não foi identificado.</p>
+          <div className="space-y-3">
+            <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">O que fazer?</p>
+            <p className="text-gray-700 text-sm">Entre em contato com o suporte para regularizar sua situação e liberar o acesso.</p>
+          </div>
+          <Button
+            className="mt-8 w-full bg-blue-600 hover:bg-blue-700 h-12 text-lg font-bold"
+            onClick={() => window.open('https://wa.me/5511999999999', '_blank')}
+          >
+            Falar com Suporte
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return (
