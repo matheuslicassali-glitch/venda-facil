@@ -50,6 +50,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onLogout, pe
 
       <nav className="flex-1 px-4 space-y-1 mt-4 overflow-y-auto">
         {menuItems.filter(item => {
+          if (!permissions || !Array.isArray(permissions)) return item.id === 'dashboard';
           if (permissions.includes('all')) return true;
           if (item.id === 'dashboard') return true;
 

@@ -152,6 +152,7 @@ const App: React.FC = () => {
         currentView={view}
         onNavigate={setView}
         onLogout={handleLogout}
+        permissions={user?.permissions || []}
       />
 
       <main className="pl-64 min-h-screen transition-all duration-300">
