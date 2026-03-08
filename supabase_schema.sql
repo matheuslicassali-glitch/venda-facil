@@ -1,5 +1,18 @@
--- SUPABASE DATABASE SCHEMA FOR VENDA FÁCIL
--- Execute este script no SQL Editor do seu projeto Supabase
+-- SCRIPT COMPLETO PARA VENDA FÁCIL (TABELAS + POLÍTICAS RLS)
+-- Limpar tabelas existentes (Ordem correta para evitar erros de chave estrangeira)
+DROP TABLE IF EXISTS venda_itens CASCADE;
+DROP TABLE IF EXISTS vendas CASCADE;
+DROP TABLE IF EXISTS caixa_movimentacoes CASCADE;
+DROP TABLE IF EXISTS caixa_sessoes CASCADE;
+DROP TABLE IF EXISTS produtos CASCADE;
+DROP TABLE IF EXISTS clientes CASCADE;
+DROP TABLE IF EXISTS funcionarios CASCADE;
+DROP TABLE IF EXISTS financeiro_contas CASCADE;
+DROP TABLE IF EXISTS fornecedores CASCADE;
+DROP TABLE IF EXISTS empresa_configuracoes CASCADE;
+
+-- Ativar extensão para geração de UUID
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- 1. Tabela de Produtos
 CREATE TABLE produtos (
@@ -32,7 +45,7 @@ CREATE TABLE clientes (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   nome TEXT NOT NULL,
   razao_social TEXT,
-  documento TEXT UNIQUE NOT NULL, -- CPF ou CNPJ
+  documento TEXT UNIQUE NOT NULL,
   inscricao_estadual TEXT,
   email TEXT,
   telefone TEXT,
@@ -49,7 +62,7 @@ CREATE TABLE clientes (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 3. Tabela de Funcionários (Equipe)
+-- 3. Tabela de Funcionários
 CREATE TABLE funcionarios (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   nome TEXT NOT NULL,
@@ -59,7 +72,7 @@ CREATE TABLE funcionarios (
   status TEXT DEFAULT 'Ativo',
   comissao DECIMAL(5,2) DEFAULT 0,
   pin TEXT,
-  permissoes TEXT[], -- Array de permissões
+  permissoes TEXT[],
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -75,7 +88,7 @@ CREATE TABLE caixa_sessoes (
   vendedor_id UUID REFERENCES funcionarios(id)
 );
 
--- 5. Tabela de Movimentações de Caixa (Sangria/Suprimento)
+-- 5. Tabela de Movimentações de Caixa
 CREATE TABLE caixa_movimentacoes (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   caixa_id UUID REFERENCES caixa_sessoes(id) ON DELETE CASCADE,
@@ -114,7 +127,7 @@ CREATE TABLE venda_itens (
   desconto DECIMAL(10,2) DEFAULT 0
 );
 
--- 8. Contas Financeiras (Pagar/Receber)
+-- 8. Contas Financeiras
 CREATE TABLE financeiro_contas (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   tipo TEXT CHECK (tipo IN ('pagar', 'receber')),
@@ -139,7 +152,7 @@ CREATE TABLE fornecedores (
 
 -- 10. Configurações da Empresa
 CREATE TABLE empresa_configuracoes (
-  id INTEGER PRIMARY KEY CHECK (id = 1), -- Apenas uma configuração por sistema
+  id INTEGER PRIMARY KEY CHECK (id = 1),
   cnpj TEXT,
   inscricao_estadual TEXT,
   razao_social TEXT,
@@ -161,40 +174,41 @@ CREATE TABLE empresa_configuracoes (
   status_licenca TEXT DEFAULT 'ativo'
 );
 
--- Enable RLS (Row Level Security) - Opcional mas recomendado
+-- CONFIGURAÇÃO DE SEGURANÇA (RLS)
+-- Ativar RLS em todas as tabelas
 ALTER TABLE produtos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE clientes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE funcionarios ENABLE ROW LEVEL SECURITY;
 ALTER TABLE vendas ENABLE ROW LEVEL SECURITY;
-
--- Criar políticas simples para permitir acesso total (ajustar conforme necessário)
-CREATE POLICY "Allow all for authenticated users" ON produtos FOR ALL TO authenticated USING (true);
-CREATE POLICY "Allow all for anon users" ON produtos FOR ALL TO anon USING (true);
-
-CREATE POLICY "Allow all for authenticated users" ON clientes FOR ALL TO authenticated USING (true);
-CREATE POLICY "Allow all for anon users" ON clientes FOR ALL TO anon USING (true);
-
-CREATE POLICY "Allow all for authenticated users" ON funcionarios FOR ALL TO authenticated USING (true);
-CREATE POLICY "Allow all for anon users" ON funcionarios FOR ALL TO anon USING (true);
-
-CREATE POLICY "Allow all for authenticated users" ON vendas FOR ALL TO authenticated USING (true);
-CREATE POLICY "Allow all for anon users" ON vendas FOR ALL TO anon USING (true);
-
--- Adding policies for other tables
 ALTER TABLE venda_itens ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow all for anon users" ON venda_itens FOR ALL TO anon USING (true);
-
 ALTER TABLE caixa_sessoes ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow all for anon users" ON caixa_sessoes FOR ALL TO anon USING (true);
-
 ALTER TABLE caixa_movimentacoes ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow all for anon users" ON caixa_movimentacoes FOR ALL TO anon USING (true);
-
 ALTER TABLE financeiro_contas ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow all for anon users" ON financeiro_contas FOR ALL TO anon USING (true);
-
 ALTER TABLE fornecedores ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow all for anon users" ON fornecedores FOR ALL TO anon USING (true);
-
 ALTER TABLE empresa_configuracoes ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow all for anon users" ON empresa_configuracoes FOR ALL TO anon USING (true);
+
+-- Criar políticas para permitir acesso anônimo (Necessário para login manual e PDV)
+CREATE POLICY "Allow all anon" ON produtos FOR ALL TO anon USING (true);
+CREATE POLICY "Allow all anon" ON clientes FOR ALL TO anon USING (true);
+CREATE POLICY "Allow all anon" ON funcionarios FOR ALL TO anon USING (true);
+CREATE POLICY "Allow all anon" ON vendas FOR ALL TO anon USING (true);
+CREATE POLICY "Allow all anon" ON venda_itens FOR ALL TO anon USING (true);
+CREATE POLICY "Allow all anon" ON caixa_sessoes FOR ALL TO anon USING (true);
+CREATE POLICY "Allow all anon" ON caixa_movimentacoes FOR ALL TO anon USING (true);
+CREATE POLICY "Allow all anon" ON financeiro_contas FOR ALL TO anon USING (true);
+CREATE POLICY "Allow all anon" ON fornecedores FOR ALL TO anon USING (true);
+CREATE POLICY "Allow all anon" ON empresa_configuracoes FOR ALL TO anon USING (true);
+
+-- Criar também políticas para usuários autenticados (Futuro)
+CREATE POLICY "Allow all auth" ON produtos FOR ALL TO authenticated USING (true);
+CREATE POLICY "Allow all auth" ON clientes FOR ALL TO authenticated USING (true);
+CREATE POLICY "Allow all auth" ON funcionarios FOR ALL TO authenticated USING (true);
+CREATE POLICY "Allow all auth" ON vendas FOR ALL TO authenticated USING (true);
+
+-- Inserir configuração inicial da empresa e um Funcionário Admin para login
+INSERT INTO empresa_configuracoes (id, status_licenca) VALUES (1, 'ativo') ON CONFLICT DO NOTHING;
+
+-- ATENÇÃO: Verifique se o e-mail abaixo é o que você deseja para o login MASTER
+INSERT INTO funcionarios (nome, cargo, cpf, email, status, pin, permissoes) 
+VALUES ('Administrador Master', 'Administrador', '000.000.000-00', 'matheuslicassali@gmail.com', 'Ativo', '1234', '{"all"}')
+ON CONFLICT DO NOTHING;
