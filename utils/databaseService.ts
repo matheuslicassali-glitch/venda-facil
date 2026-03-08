@@ -12,10 +12,34 @@ export const db = {
             return data as Product[];
         },
         async upsert(product: Product) {
-            const payload: any = { ...product };
-            if (product.id && !isUUID(product.id)) {
-                delete payload.id;
+            const payload: any = {
+                nome: product.nome,
+                sku: product.sku,
+                codigo_barras: product.codigo_barras,
+                preco_venda: product.preco_venda,
+                preco_custo: product.preco_custo,
+                estoque_atual: product.estoque_atual,
+                estoque_minimo: product.estoque_minimo,
+                unidade: product.unidade,
+                categoria: product.categoria,
+                foto: product.foto,
+                ncm: product.ncm,
+                cest: product.cest,
+                origem: product.origem,
+                cfop: product.cfop,
+                cst_csosn: product.cst_csosn,
+                pis_cst: product.pis_cst,
+                pis_aliquota: product.pis_aliquota,
+                cofins_cst: product.cofins_cst,
+                cofins_aliquota: product.cofins_aliquota,
+                icms_aliquota: product.icms_aliquota,
+                validade: product.validade
+            };
+
+            if (product.id && isUUID(product.id)) {
+                payload.id = product.id;
             }
+
             const { error } = await supabase.from('produtos').upsert(payload);
             if (error) throw error;
         },
@@ -37,10 +61,29 @@ export const db = {
             return data as Client[];
         },
         async upsert(client: Client) {
-            const payload: any = { ...client };
-            if (client.id && !isUUID(client.id)) {
-                delete payload.id;
+            const payload: any = {
+                nome: client.nome,
+                razao_social: client.razao_social,
+                documento: client.documento,
+                inscricao_estadual: client.inscricao_estadual,
+                email: client.email,
+                telefone: client.telefone,
+                limite_credito: client.limite_credito,
+                saldo_devedor: client.saldo_devedor,
+                endereco: client.endereco,
+                logradouro: client.logradouro,
+                numero: client.numero,
+                bairro: client.bairro,
+                cidade: client.cidade,
+                uf: client.uf,
+                cep: client.cep,
+                ibge_cidade: client.ibge_cidade
+            };
+
+            if (client.id && isUUID(client.id)) {
+                payload.id = client.id;
             }
+
             const { error } = await supabase.from('clientes').upsert(payload);
             if (error) throw error;
         },
@@ -58,10 +101,21 @@ export const db = {
             return data as Employee[];
         },
         async upsert(employee: Employee) {
-            const payload: any = { ...employee };
-            if (employee.id && !isUUID(employee.id)) {
-                delete payload.id;
+            const payload: any = {
+                nome: employee.nome,
+                cargo: employee.cargo,
+                cpf: employee.cpf,
+                email: employee.email,
+                status: employee.status,
+                comissao: employee.comissao,
+                pin: employee.pin,
+                permissoes: employee.permissoes
+            };
+
+            if (employee.id && isUUID(employee.id)) {
+                payload.id = employee.id;
             }
+
             const { error } = await supabase.from('funcionarios').upsert(payload);
             if (error) throw error;
         }
@@ -161,10 +215,19 @@ export const db = {
             return data as FinancialAccount[];
         },
         async upsert(account: FinancialAccount) {
-            const payload: any = { ...account };
-            if (account.id && !isUUID(account.id)) {
-                delete payload.id;
+            const payload: any = {
+                tipo: account.tipo,
+                descricao: account.descricao,
+                valor: account.valor,
+                vencimento: account.vencimento,
+                status: account.status,
+                categoria: account.categoria
+            };
+
+            if (account.id && isUUID(account.id)) {
+                payload.id = account.id;
             }
+
             const { error } = await supabase.from('financeiro_contas').upsert(payload);
             if (error) throw error;
         }
@@ -188,10 +251,18 @@ export const db = {
             return data as Supplier[];
         },
         async upsert(supplier: Supplier) {
-            const payload: any = { ...supplier };
-            if (supplier.id && !isUUID(supplier.id)) {
-                delete payload.id;
+            const payload: any = {
+                nome: supplier.nome,
+                cnpj: supplier.cnpj,
+                email: supplier.email,
+                telefone: supplier.telefone,
+                endereco: supplier.endereco
+            };
+
+            if (supplier.id && isUUID(supplier.id)) {
+                payload.id = supplier.id;
             }
+
             const { error } = await supabase.from('fornecedores').upsert(payload);
             if (error) throw error;
         },
