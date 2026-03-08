@@ -10,7 +10,12 @@ export const db = {
             return data as Product[];
         },
         async upsert(product: Product) {
-            const { error } = await supabase.from('produtos').upsert(product);
+            const payload: any = { ...product };
+            // Se o ID não for um UUID válido, removemos para o Supabase gerar um novo
+            if (product.id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(product.id)) {
+                delete payload.id;
+            }
+            const { error } = await supabase.from('produtos').upsert(payload);
             if (error) throw error;
         },
         async delete(id: string) {
@@ -31,7 +36,11 @@ export const db = {
             return data as Client[];
         },
         async upsert(client: Client) {
-            const { error } = await supabase.from('clientes').upsert(client);
+            const payload: any = { ...client };
+            if (client.id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(client.id)) {
+                delete payload.id;
+            }
+            const { error } = await supabase.from('clientes').upsert(payload);
             if (error) throw error;
         },
         async updateDebt(id: string, newDebt: number) {
@@ -48,7 +57,11 @@ export const db = {
             return data as Employee[];
         },
         async upsert(employee: Employee) {
-            const { error } = await supabase.from('funcionarios').upsert(employee);
+            const payload: any = { ...employee };
+            if (employee.id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(employee.id)) {
+                delete payload.id;
+            }
+            const { error } = await supabase.from('funcionarios').upsert(payload);
             if (error) throw error;
         }
     },
@@ -175,7 +188,11 @@ export const db = {
             return data as Supplier[];
         },
         async upsert(supplier: Supplier) {
-            const { error } = await supabase.from('fornecedores').upsert(supplier);
+            const payload: any = { ...supplier };
+            if (supplier.id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(supplier.id)) {
+                delete payload.id;
+            }
+            const { error } = await supabase.from('fornecedores').upsert(payload);
             if (error) throw error;
         },
         async delete(id: string) {
