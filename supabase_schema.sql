@@ -169,6 +169,32 @@ ALTER TABLE vendas ENABLE ROW LEVEL SECURITY;
 
 -- Criar políticas simples para permitir acesso total (ajustar conforme necessário)
 CREATE POLICY "Allow all for authenticated users" ON produtos FOR ALL TO authenticated USING (true);
+CREATE POLICY "Allow all for anon users" ON produtos FOR ALL TO anon USING (true);
+
 CREATE POLICY "Allow all for authenticated users" ON clientes FOR ALL TO authenticated USING (true);
+CREATE POLICY "Allow all for anon users" ON clientes FOR ALL TO anon USING (true);
+
 CREATE POLICY "Allow all for authenticated users" ON funcionarios FOR ALL TO authenticated USING (true);
+CREATE POLICY "Allow all for anon users" ON funcionarios FOR ALL TO anon USING (true);
+
 CREATE POLICY "Allow all for authenticated users" ON vendas FOR ALL TO authenticated USING (true);
+CREATE POLICY "Allow all for anon users" ON vendas FOR ALL TO anon USING (true);
+
+-- Adding policies for other tables
+ALTER TABLE venda_itens ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all for anon users" ON venda_itens FOR ALL TO anon USING (true);
+
+ALTER TABLE caixa_sessoes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all for anon users" ON caixa_sessoes FOR ALL TO anon USING (true);
+
+ALTER TABLE caixa_movimentacoes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all for anon users" ON caixa_movimentacoes FOR ALL TO anon USING (true);
+
+ALTER TABLE financeiro_contas ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all for anon users" ON financeiro_contas FOR ALL TO anon USING (true);
+
+ALTER TABLE fornecedores ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all for anon users" ON fornecedores FOR ALL TO anon USING (true);
+
+ALTER TABLE empresa_configuracoes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all for anon users" ON empresa_configuracoes FOR ALL TO anon USING (true);
