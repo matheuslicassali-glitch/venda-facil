@@ -1,0 +1,225 @@
+
+import React, { useState, useEffect } from 'react';
+import Login from './pages/Login';
+import Sidebar from './components/Sidebar';
+import Dashboard from './pages/Dashboard';
+import { db } from './utils/databaseService';
+import { ShieldAlert } from 'lucide-react';
+import Products from './pages/Products';
+import POS from './pages/POS';
+import Reports from './pages/Reports';
+import Invoices from './pages/Invoices';
+import Suppliers from './pages/Suppliers';
+import Employees from './pages/Employees';
+import Inventory from './pages/Inventory';
+import Clients from './pages/Clients';
+import Cashier from './pages/Cashier';
+import Finance from './pages/Finance';
+import Settings from './pages/Settings';
+import CommonSales from './pages/CommonSales';
+import NFeManual from './pages/NFeManual';
+import { View, Permission, Employee } from './types';
+import { Toast } from './components/ui/Toast';
+// Fix: Import missing Button component
+import { Button } from './components/ui/Button';
+
+const App: React.FC = () => {
+  const [view, setView] = useState<View>('login');
+  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
+
+  // Simple authentication state
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<{ id: string, email: string, name: string, permissions: Permission[] } | null>(null);
+  const [isBlocked, setIsBlocked] = useState(false);
+
+  useEffect(() => {
+    // Check License Status
+    const checkLicense = async () => {
+      try {
+        const { data } = await db.supabase.from('empresa_configuracoes').select('status_licenca').single();
+        if (data && data.status_licenca === 'bloqueado') {
+          setIsBlocked(true);
+        }
+      } catch (err) {
+        console.error('Erro ao verificar licença:', err);
+      }
+    };
+    checkLicense();
+
+    const auth = localStorage.getItem('venda-facil-auth');
+    const userData = localStorage.getItem('venda-facil-user');
+    if (auth === 'true') {
+      setIsAuthenticated(true);
+      setView('dashboard');
+      if (userData) setUser(JSON.parse(userData));
+    }
+
+    const handleGlobalNav = (e: any) => setView(e.detail);
+    window.addEventListener('navigate', handleGlobalNav);
+    return () => window.removeEventListener('navigate', handleGlobalNav);
+  }, []);
+
+  const handleLogin = (userData?: { id: string, email: string, name: string, permissions: Permission[] }) => {
+    setIsAuthenticated(true);
+    setView('dashboard');
+    localStorage.setItem('venda-facil-auth', 'true');
+    if (userData) {
+      setUser(userData);
+      localStorage.setItem('venda-facil-user', JSON.stringify(userData));
+    }
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setView('login');
+    setUser(null);
+    localStorage.removeItem('venda-facil-auth');
+    localStorage.removeItem('venda-facil-user');
+    showToast('Sessão encerrada.', 'success');
+  };
+
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToast({ message, type });
+  };
+
+  const hasPermission = (v: View): boolean => {
+    if (!user || !user.permissions) return false;
+    if (user.permissions.includes('all')) return true;
+    if (v === 'dashboard' || v === 'login') return true;
+
+    // Convert view to permission
+    const viewToPermission: Record<string, Permission> = {
+      'produtos': 'produtos',
+      'pdv': 'pdv',
+      'relatorios': 'relatorios',
+      'nfe': 'nfe',
+      'fornecedores': 'fornecedores',
+      'funcionarios': 'funcionarios',
+      'estoque': 'estoque',
+      'clientes': 'clientes',
+      'caixa': 'caixa',
+      'financeiro': 'financeiro',
+      'configuracoes': 'configuracoes',
+      'venda_comum': 'pdv',
+      'nfe_manual': 'nfe'
+    };
+
+    const requiredPermission = viewToPermission[v];
+    if (!requiredPermission) return true; // Allow if no specific permission mapped
+
+    return Array.isArray(user.permissions) && user.permissions.includes(requiredPermission);
+  };
+
+  const renderView = () => {
+    if (!hasPermission(view)) {
+      return (
+        <div className="flex flex-col items-center justify-center py-20 text-center animate-in fade-in">
+          <div className="w-20 h-20 bg-red-100 text-red-600 rounded-full flex items-center justify-center mb-4">
+            <ShieldAlert size={40} />
+          </div>
+          <h2 className="text-2xl font-black text-gray-800 tracking-tight">Acesso Negado</h2>
+          <p className="text-gray-500 max-w-md mx-auto mt-2">Você não tem permissão para acessar o módulo <strong>{view.toUpperCase()}</strong>. Entre em contato com o administrador.</p>
+          <Button variant="primary" className="mt-8" onClick={() => setView('dashboard')}>Voltar ao Dashboard</Button>
+        </div>
+      );
+    }
+
+    switch (view) {
+      case 'dashboard': return <Dashboard />;
+      case 'produtos': return <Products onNotify={showToast} />;
+      case 'pdv': return <POS onNotify={showToast} currentUser={user} />;
+      case 'relatorios': return <Reports />;
+      case 'nfe': return <Invoices />;
+      case 'fornecedores': return <Suppliers onNotify={showToast} />;
+      case 'funcionarios': return <Employees onNotify={showToast} />;
+      case 'estoque': return <Inventory onNotify={showToast} />;
+      case 'clientes': return <Clients onNotify={showToast} />;
+      case 'caixa': return <Cashier onNotify={showToast} currentUser={user} />;
+      case 'financeiro': return <Finance onNotify={showToast} />;
+      case 'configuracoes': return <Settings onNotify={showToast} />;
+      case 'venda_comum': return <CommonSales />;
+      case 'nfe_manual': return <NFeManual onNotify={showToast} />;
+      default: return (
+        <div className="flex flex-col items-center justify-center py-20 text-center animate-in fade-in">
+          <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center mb-4 text-gray-400">
+            <span className="text-2xl font-bold">!</span>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-400">Módulo em Ajuste</h2>
+          <p className="text-gray-500">A funcionalidade <strong>{view.toUpperCase()}</strong> está sendo calibrada para seu negócio.</p>
+          <Button variant="primary" className="mt-6" onClick={() => setView('dashboard')}>Voltar ao Início</Button>
+        </div>
+      );
+    }
+  };
+
+  if (isBlocked) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
+        <div className="bg-white p-8 rounded-2xl shadow-2xl max-w-md w-full text-center animate-in fade-in zoom-in duration-500">
+          <div className="w-20 h-20 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
+            <ShieldAlert size={48} />
+          </div>
+          <h1 className="text-3xl font-black text-gray-900 mb-2">Sistema Bloqueado</h1>
+          <p className="text-gray-500 mb-8">Detectamos que a licença do seu aplicativo expirou ou o pagamento não foi identificado.</p>
+          <div className="space-y-3">
+            <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">O que fazer?</p>
+            <p className="text-gray-700 text-sm">Entre em contato com o suporte para regularizar sua situação e liberar o acesso.</p>
+          </div>
+          <Button
+            className="mt-8 w-full bg-blue-600 hover:bg-blue-700 h-12 text-lg font-bold"
+            onClick={() => window.open('https://wa.me/5511999999999', '_blank')}
+          >
+            Falar com Suporte
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <>
+        <Login onLogin={handleLogin} onNotify={showToast} />
+        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      </>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#F3F4F6]">
+      <Sidebar
+        currentView={view}
+        onNavigate={setView}
+        onLogout={handleLogout}
+        permissions={user?.permissions || []}
+      />
+
+      <main className="pl-64 min-h-screen transition-all duration-300">
+        <div className="p-8 max-w-[1400px] mx-auto">
+          <div className="flex justify-end mb-4">
+            <div className="bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-100 flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-xs">
+                {user?.name?.charAt(0).toUpperCase() || 'U'}
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 font-bold uppercase leading-none mb-0.5">Operador</p>
+                <span className="text-sm font-semibold text-gray-700">{user?.name || 'Usuário'}</span>
+              </div>
+            </div>
+          </div>
+          {renderView()}
+        </div>
+      </main>
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+    </div>
+  );
+};
+
+export default App;
