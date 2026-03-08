@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { FileText, Plus, Trash2, Save, ShoppingBag, User, ArrowLeft, Building2, Truck, Calculator } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import { db, generateUUID } from '../utils/databaseService';
+import { db } from '../utils/databaseService';
 import { Client, Product, SaleItem, CompanySettings, Sale } from '../types';
 import { generateNFeXML } from '../utils/nfeXmlService';
 import { signNFeXML } from '../utils/signatureService';
@@ -65,7 +65,7 @@ const NFeManual: React.FC<NFeManualProps> = ({ onNotify }) => {
             ));
         } else {
             setCart([...cart, {
-                id: generateUUID(),
+                id: crypto.randomUUID(),
                 produto_id: product.id,
                 nome: product.nome,
                 quantidade: 1,
@@ -138,7 +138,7 @@ const NFeManual: React.FC<NFeManualProps> = ({ onNotify }) => {
             }
 
             const newSale: Sale = {
-                id: generateUUID(),
+                id: '',
                 data_venda: new Date().toISOString(),
                 valor_total: total,
                 desconto_total: 0,

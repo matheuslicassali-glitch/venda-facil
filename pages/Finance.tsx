@@ -18,7 +18,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { Sale, Employee, FinancialAccount } from '../types';
-import { db, generateUUID } from '../utils/databaseService';
+import { db } from '../utils/databaseService';
 
 interface FinanceProps {
     onNotify: (message: string, type: 'success' | 'error') => void;
@@ -66,7 +66,7 @@ const Finance: React.FC<FinanceProps> = ({ onNotify }) => {
         e.preventDefault();
         setLoading(true);
         const newAcc: FinancialAccount = {
-            id: generateUUID(),
+            id: '',
             descricao: formData.descricao,
             valor: parseFloat(formData.valor),
             tipo: formData.tipo,
@@ -76,7 +76,7 @@ const Finance: React.FC<FinanceProps> = ({ onNotify }) => {
         };
 
         try {
-            await db.finance.upsert(newAcc);
+            await db.finance.save(newAcc, false);
             onNotify('✅ Lançamento financeiro registrado!', 'success');
             setIsModalOpen(false);
             loadFinanceData();
@@ -90,7 +90,7 @@ const Finance: React.FC<FinanceProps> = ({ onNotify }) => {
     const toggleStatus = async (account: FinancialAccount) => {
         const newStatus = account.status === 'pago' ? 'pendente' : 'pago';
         try {
-            await db.finance.upsert({ ...account, status: newStatus as any });
+            await db.finance.save({ ...account, status: newStatus as any }, true);
             onNotify('Status atualizado!', 'success');
             loadFinanceData();
         } catch (err) {

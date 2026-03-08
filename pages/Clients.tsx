@@ -5,7 +5,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { Client } from '../types';
-import { db, generateUUID } from '../utils/databaseService';
+import { db } from '../utils/databaseService';
 
 interface ClientsProps {
     onNotify: (message: string, type: 'success' | 'error') => void;
@@ -102,7 +102,7 @@ const Clients: React.FC<ClientsProps> = ({ onNotify }) => {
         setLoading(true);
 
         const clientData: Client = {
-            id: editingClient ? editingClient.id : generateUUID(),
+            id: editingClient ? editingClient.id : '',
             nome: formData.nome,
             razao_social: formData.razao_social,
             documento: formData.documento,
@@ -122,7 +122,7 @@ const Clients: React.FC<ClientsProps> = ({ onNotify }) => {
         };
 
         try {
-            await db.clients.upsert(clientData);
+            await db.clients.save(clientData, !!editingClient);
             onNotify(`✅ Cliente ${editingClient ? 'atualizado' : 'cadastrado'}!`, 'success');
             setIsModalOpen(false);
             loadClients();

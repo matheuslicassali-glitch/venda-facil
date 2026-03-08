@@ -5,7 +5,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { Employee, Permission } from '../types';
-import { db, generateUUID } from '../utils/databaseService';
+import { db } from '../utils/databaseService';
 
 interface EmployeesProps {
   onNotify: (message: string, type: 'success' | 'error') => void;
@@ -82,7 +82,7 @@ const Employees: React.FC<EmployeesProps> = ({ onNotify }) => {
     setLoading(true);
 
     const empData: Employee = {
-      id: editingEmp ? editingEmp.id : generateUUID(),
+      id: editingEmp ? editingEmp.id : '',
       nome: formData.nome,
       cargo: formData.cargo as any,
       cpf: formData.cpf,
@@ -93,7 +93,7 @@ const Employees: React.FC<EmployeesProps> = ({ onNotify }) => {
     };
 
     try {
-      await db.employees.upsert(empData);
+      await db.employees.save(empData, !!editingEmp);
       onNotify(`✅ Funcionário ${editingEmp ? 'atualizado' : 'cadastrado'}!`, 'success');
       setIsModalOpen(false);
       loadEmployees();
@@ -124,7 +124,7 @@ const Employees: React.FC<EmployeesProps> = ({ onNotify }) => {
   const toggleStatus = async (emp: Employee) => {
     const newStatus = emp.status === 'Ativo' ? 'Inativo' : 'Ativo';
     try {
-      await db.employees.upsert({ ...emp, status: newStatus as any });
+      await db.employees.save({ ...emp, status: newStatus as any }, true);
       onNotify('Status atualizado!', 'success');
       loadEmployees();
     } catch (err) {

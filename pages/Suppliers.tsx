@@ -4,7 +4,7 @@ import { Truck, Plus, Search, Edit, Trash2, Mail, Phone, MapPin } from 'lucide-r
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
-import { db, generateUUID } from '../utils/databaseService';
+import { db } from '../utils/databaseService';
 import { Supplier } from '../types';
 
 interface SuppliersProps {
@@ -54,12 +54,12 @@ const Suppliers: React.FC<SuppliersProps> = ({ onNotify }) => {
     setLoading(true);
 
     const supplierData: Supplier = {
-      id: editingSup ? editingSup.id : generateUUID(),
+      id: editingSup ? editingSup.id : '',
       ...formData
     };
 
     try {
-      await db.suppliers.upsert(supplierData);
+      await db.suppliers.save(supplierData, !!editingSup);
       onNotify(`✅ Fornecedor ${editingSup ? 'atualizado' : 'cadastrado'} com sucesso!`, 'success');
       setIsModalOpen(false);
       loadSuppliers();

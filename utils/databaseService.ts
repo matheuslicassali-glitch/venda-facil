@@ -13,20 +13,15 @@ export const generateUUID = () => {
     });
 };
 
-// Limpa o objeto removendo campos undefined antes de enviar para o Supabase
-const cleanPayload = (obj: any) => {
-    return Object.fromEntries(Object.entries(obj).filter(([_, v]) => v !== undefined));
-};
-
 export const db = {
-    // PRODUCTS
+    // PRODUCTS - usando insert/update igual ao caixa/financeiro
     products: {
         async list() {
             const { data, error } = await supabase.from('produtos').select('*').order('nome');
             if (error) throw error;
             return data as Product[];
         },
-        async upsert(product: Product) {
+        async save(product: Product, isEditing: boolean) {
             const payload: any = {
                 nome: product.nome,
                 sku: product.sku,
@@ -51,12 +46,26 @@ export const db = {
                 validade: product.validade
             };
 
-            if (product.id && isUUID(product.id)) {
-                payload.id = product.id;
+            if (isEditing && product.id && isUUID(product.id)) {
+                // UPDATE - igual ao cashier.updateSession
+                const { error } = await supabase.from('produtos').update(payload).eq('id', product.id);
+                if (error) throw error;
+            } else {
+                // INSERT - igual ao cashier.openSession (sem enviar id)
+                const { error } = await supabase.from('produtos').insert(payload);
+                if (error) throw error;
             }
-
-            const { error } = await supabase.from('produtos').upsert(cleanPayload(payload));
-            if (error) throw error;
+        },
+        // Mantém compatibilidade com chamadas antigas
+        async upsert(product: Product) {
+            const hasValidId = product.id && isUUID(product.id);
+            // Verifica se o registro já existe no banco
+            if (hasValidId) {
+                const { data } = await supabase.from('produtos').select('id').eq('id', product.id).single();
+                await this.save(product, !!data);
+            } else {
+                await this.save(product, false);
+            }
         },
         async delete(id: string) {
             const { error } = await supabase.from('produtos').delete().eq('id', id);
@@ -68,14 +77,14 @@ export const db = {
         }
     },
 
-    // CLIENTS
+    // CLIENTS - usando insert/update igual ao caixa/financeiro
     clients: {
         async list() {
             const { data, error } = await supabase.from('clientes').select('*').order('nome');
             if (error) throw error;
             return data as Client[];
         },
-        async upsert(client: Client) {
+        async save(client: Client, isEditing: boolean) {
             const payload: any = {
                 nome: client.nome,
                 razao_social: client.razao_social,
@@ -95,12 +104,22 @@ export const db = {
                 ibge_cidade: client.ibge_cidade
             };
 
-            if (client.id && isUUID(client.id)) {
-                payload.id = client.id;
+            if (isEditing && client.id && isUUID(client.id)) {
+                const { error } = await supabase.from('clientes').update(payload).eq('id', client.id);
+                if (error) throw error;
+            } else {
+                const { error } = await supabase.from('clientes').insert(payload);
+                if (error) throw error;
             }
-
-            const { error } = await supabase.from('clientes').upsert(cleanPayload(payload));
-            if (error) throw error;
+        },
+        async upsert(client: Client) {
+            const hasValidId = client.id && isUUID(client.id);
+            if (hasValidId) {
+                const { data } = await supabase.from('clientes').select('id').eq('id', client.id).single();
+                await this.save(client, !!data);
+            } else {
+                await this.save(client, false);
+            }
         },
         async updateDebt(id: string, newDebt: number) {
             const { error } = await supabase.from('clientes').update({ saldo_devedor: newDebt }).eq('id', id);
@@ -108,14 +127,14 @@ export const db = {
         }
     },
 
-    // EMPLOYEES
+    // EMPLOYEES - usando insert/update igual ao caixa/financeiro
     employees: {
         async list() {
             const { data, error } = await supabase.from('funcionarios').select('*').order('nome');
             if (error) throw error;
             return data as Employee[];
         },
-        async upsert(employee: Employee) {
+        async save(employee: Employee, isEditing: boolean) {
             const payload: any = {
                 nome: employee.nome,
                 cargo: employee.cargo,
@@ -127,16 +146,26 @@ export const db = {
                 permissoes: employee.permissoes
             };
 
-            if (employee.id && isUUID(employee.id)) {
-                payload.id = employee.id;
+            if (isEditing && employee.id && isUUID(employee.id)) {
+                const { error } = await supabase.from('funcionarios').update(payload).eq('id', employee.id);
+                if (error) throw error;
+            } else {
+                const { error } = await supabase.from('funcionarios').insert(payload);
+                if (error) throw error;
             }
-
-            const { error } = await supabase.from('funcionarios').upsert(cleanPayload(payload));
-            if (error) throw error;
+        },
+        async upsert(employee: Employee) {
+            const hasValidId = employee.id && isUUID(employee.id);
+            if (hasValidId) {
+                const { data } = await supabase.from('funcionarios').select('id').eq('id', employee.id).single();
+                await this.save(employee, !!data);
+            } else {
+                await this.save(employee, false);
+            }
         }
     },
 
-    // SALES
+    // SALES - já funciona corretamente com insert
     sales: {
         async list() {
             const { data, error } = await supabase.from('vendas').select('*, venda_itens(*)').order('data_venda', { ascending: false });
@@ -178,7 +207,7 @@ export const db = {
         }
     },
 
-    // CASHIER
+    // CASHIER - já funciona corretamente
     cashier: {
         async getActiveSession() {
             const { data, error } = await supabase.from('caixa_sessoes').select('*').eq('status', 'aberto').single();
@@ -222,14 +251,14 @@ export const db = {
             return data as CashTransaction[];
         }
     },
-    // FINANCE
+    // FINANCE - já funciona corretamente
     finance: {
         async list() {
             const { data, error } = await supabase.from('financeiro_contas').select('*').order('vencimento');
             if (error) throw error;
             return data as FinancialAccount[];
         },
-        async upsert(account: FinancialAccount) {
+        async save(account: FinancialAccount, isEditing: boolean) {
             const payload: any = {
                 tipo: account.tipo,
                 descricao: account.descricao,
@@ -239,12 +268,22 @@ export const db = {
                 categoria: account.categoria
             };
 
-            if (account.id && isUUID(account.id)) {
-                payload.id = account.id;
+            if (isEditing && account.id && isUUID(account.id)) {
+                const { error } = await supabase.from('financeiro_contas').update(payload).eq('id', account.id);
+                if (error) throw error;
+            } else {
+                const { error } = await supabase.from('financeiro_contas').insert(payload);
+                if (error) throw error;
             }
-
-            const { error } = await supabase.from('financeiro_contas').upsert(cleanPayload(payload));
-            if (error) throw error;
+        },
+        async upsert(account: FinancialAccount) {
+            const hasValidId = account.id && isUUID(account.id);
+            if (hasValidId) {
+                const { data } = await supabase.from('financeiro_contas').select('id').eq('id', account.id).single();
+                await this.save(account, !!data);
+            } else {
+                await this.save(account, false);
+            }
         }
     },
     settings: {
@@ -258,14 +297,14 @@ export const db = {
             if (error) throw error;
         }
     },
-    // SUPPLIERS
+    // SUPPLIERS - usando insert/update igual ao caixa/financeiro
     suppliers: {
         async list() {
             const { data, error } = await supabase.from('fornecedores').select('*').order('nome');
             if (error) throw error;
             return data as Supplier[];
         },
-        async upsert(supplier: Supplier) {
+        async save(supplier: Supplier, isEditing: boolean) {
             const payload: any = {
                 nome: supplier.nome,
                 cnpj: supplier.cnpj,
@@ -274,12 +313,22 @@ export const db = {
                 endereco: supplier.endereco
             };
 
-            if (supplier.id && isUUID(supplier.id)) {
-                payload.id = supplier.id;
+            if (isEditing && supplier.id && isUUID(supplier.id)) {
+                const { error } = await supabase.from('fornecedores').update(payload).eq('id', supplier.id);
+                if (error) throw error;
+            } else {
+                const { error } = await supabase.from('fornecedores').insert(payload);
+                if (error) throw error;
             }
-
-            const { error } = await supabase.from('fornecedores').upsert(cleanPayload(payload));
-            if (error) throw error;
+        },
+        async upsert(supplier: Supplier) {
+            const hasValidId = supplier.id && isUUID(supplier.id);
+            if (hasValidId) {
+                const { data } = await supabase.from('fornecedores').select('id').eq('id', supplier.id).single();
+                await this.save(supplier, !!data);
+            } else {
+                await this.save(supplier, false);
+            }
         },
         async delete(id: string) {
             const { error } = await supabase.from('fornecedores').delete().eq('id', id);
