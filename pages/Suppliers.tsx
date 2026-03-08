@@ -4,7 +4,7 @@ import { Truck, Plus, Search, Edit, Trash2, Mail, Phone, MapPin } from 'lucide-r
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
-import { db } from '../utils/databaseService';
+import { db, generateUUID } from '../utils/databaseService';
 import { Supplier } from '../types';
 
 interface SuppliersProps {
@@ -54,7 +54,7 @@ const Suppliers: React.FC<SuppliersProps> = ({ onNotify }) => {
     setLoading(true);
 
     const supplierData: Supplier = {
-      id: editingSup ? editingSup.id : Math.random().toString(36).substr(2, 9),
+      id: editingSup ? editingSup.id : generateUUID(),
       ...formData
     };
 

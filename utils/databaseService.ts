@@ -1,7 +1,22 @@
 import { supabase } from './supabaseClient';
 import { Product, Client, Employee, Sale, CashSession, CashTransaction, FinancialAccount, Supplier } from '../types';
 
-const isUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+const isUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
+export const generateUUID = () => {
+    if (typeof window !== 'undefined' && window.crypto && window.crypto.randomUUID) {
+        return window.crypto.randomUUID();
+    }
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+        const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+};
+
+// Limpa o objeto removendo campos undefined antes de enviar para o Supabase
+const cleanPayload = (obj: any) => {
+    return Object.fromEntries(Object.entries(obj).filter(([_, v]) => v !== undefined));
+};
 
 export const db = {
     // PRODUCTS
@@ -40,7 +55,7 @@ export const db = {
                 payload.id = product.id;
             }
 
-            const { error } = await supabase.from('produtos').upsert(payload);
+            const { error } = await supabase.from('produtos').upsert(cleanPayload(payload));
             if (error) throw error;
         },
         async delete(id: string) {
@@ -84,7 +99,7 @@ export const db = {
                 payload.id = client.id;
             }
 
-            const { error } = await supabase.from('clientes').upsert(payload);
+            const { error } = await supabase.from('clientes').upsert(cleanPayload(payload));
             if (error) throw error;
         },
         async updateDebt(id: string, newDebt: number) {
@@ -116,7 +131,7 @@ export const db = {
                 payload.id = employee.id;
             }
 
-            const { error } = await supabase.from('funcionarios').upsert(payload);
+            const { error } = await supabase.from('funcionarios').upsert(cleanPayload(payload));
             if (error) throw error;
         }
     },
@@ -228,7 +243,7 @@ export const db = {
                 payload.id = account.id;
             }
 
-            const { error } = await supabase.from('financeiro_contas').upsert(payload);
+            const { error } = await supabase.from('financeiro_contas').upsert(cleanPayload(payload));
             if (error) throw error;
         }
     },
@@ -263,7 +278,7 @@ export const db = {
                 payload.id = supplier.id;
             }
 
-            const { error } = await supabase.from('fornecedores').upsert(payload);
+            const { error } = await supabase.from('fornecedores').upsert(cleanPayload(payload));
             if (error) throw error;
         },
         async delete(id: string) {

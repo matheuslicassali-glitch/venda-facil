@@ -5,7 +5,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { Client } from '../types';
-import { db } from '../utils/databaseService';
+import { db, generateUUID } from '../utils/databaseService';
 
 interface ClientsProps {
     onNotify: (message: string, type: 'success' | 'error') => void;
@@ -102,7 +102,7 @@ const Clients: React.FC<ClientsProps> = ({ onNotify }) => {
         setLoading(true);
 
         const clientData: Client = {
-            id: editingClient ? editingClient.id : Math.random().toString(36).substr(2, 9),
+            id: editingClient ? editingClient.id : generateUUID(),
             nome: formData.nome,
             razao_social: formData.razao_social,
             documento: formData.documento,

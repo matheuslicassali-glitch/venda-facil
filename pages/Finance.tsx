@@ -18,7 +18,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { Sale, Employee, FinancialAccount } from '../types';
-import { db } from '../utils/databaseService';
+import { db, generateUUID } from '../utils/databaseService';
 
 interface FinanceProps {
     onNotify: (message: string, type: 'success' | 'error') => void;
@@ -66,7 +66,7 @@ const Finance: React.FC<FinanceProps> = ({ onNotify }) => {
         e.preventDefault();
         setLoading(true);
         const newAcc: FinancialAccount = {
-            id: Math.random().toString(36).substr(2, 9),
+            id: generateUUID(),
             descricao: formData.descricao,
             valor: parseFloat(formData.valor),
             tipo: formData.tipo,

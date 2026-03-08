@@ -5,7 +5,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { Employee, Permission } from '../types';
-import { db } from '../utils/databaseService';
+import { db, generateUUID } from '../utils/databaseService';
 
 interface EmployeesProps {
   onNotify: (message: string, type: 'success' | 'error') => void;
@@ -82,7 +82,7 @@ const Employees: React.FC<EmployeesProps> = ({ onNotify }) => {
     setLoading(true);
 
     const empData: Employee = {
-      id: editingEmp ? editingEmp.id : Math.random().toString(36).substr(2, 9),
+      id: editingEmp ? editingEmp.id : generateUUID(),
       nome: formData.nome,
       cargo: formData.cargo as any,
       cpf: formData.cpf,

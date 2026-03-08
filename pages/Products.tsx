@@ -5,7 +5,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { Product } from '../types';
-import { db } from '../utils/databaseService';
+import { db, generateUUID } from '../utils/databaseService';
 
 interface ProductsProps {
   onNotify: (message: string, type: 'success' | 'error') => void;
@@ -118,7 +118,7 @@ const Products: React.FC<ProductsProps> = ({ onNotify }) => {
     setLoading(true);
 
     const productData: Product = {
-      id: editingProduct ? editingProduct.id : Math.random().toString(36).substr(2, 9),
+      id: editingProduct ? editingProduct.id : generateUUID(),
       nome: formData.nome,
       sku: formData.sku,
       codigo_barras: formData.codigo_barras,

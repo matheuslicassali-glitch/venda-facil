@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { FileText, Plus, Trash2, Save, ShoppingBag, User, ArrowLeft, Building2, Truck, Calculator } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import { db } from '../utils/databaseService';
+import { db, generateUUID } from '../utils/databaseService';
 import { Client, Product, SaleItem, CompanySettings, Sale } from '../types';
 import { generateNFeXML } from '../utils/nfeXmlService';
 import { signNFeXML } from '../utils/signatureService';
@@ -65,7 +65,7 @@ const NFeManual: React.FC<NFeManualProps> = ({ onNotify }) => {
             ));
         } else {
             setCart([...cart, {
-                id: Math.random().toString(36).substr(2, 9),
+                id: generateUUID(),
                 produto_id: product.id,
                 nome: product.nome,
                 quantidade: 1,
@@ -97,7 +97,7 @@ const NFeManual: React.FC<NFeManualProps> = ({ onNotify }) => {
         setLoading(true);
 
         try {
-            const nfe_numero = Math.floor(100000 + Math.random() * 900000).toString();
+            const nfe_numero = Math.floor(100000000 + Math.random() * 900000000).toString().substring(0, 9);
             const companySettingsData = await db.settings.get();
 
             // Map db flat fields to settings object for XML service
@@ -138,7 +138,7 @@ const NFeManual: React.FC<NFeManualProps> = ({ onNotify }) => {
             }
 
             const newSale: Sale = {
-                id: Math.random().toString(36).substr(2, 9),
+                id: generateUUID(),
                 data_venda: new Date().toISOString(),
                 valor_total: total,
                 desconto_total: 0,
