@@ -1,6 +1,8 @@
 import { supabase } from './supabaseClient';
 import { Product, Client, Employee, Sale, CashSession, CashTransaction, FinancialAccount, Supplier } from '../types';
 
+const isUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+
 export const db = {
     // PRODUCTS
     products: {
@@ -11,8 +13,7 @@ export const db = {
         },
         async upsert(product: Product) {
             const payload: any = { ...product };
-            // Se o ID não for um UUID válido, removemos para o Supabase gerar um novo
-            if (product.id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(product.id)) {
+            if (product.id && !isUUID(product.id)) {
                 delete payload.id;
             }
             const { error } = await supabase.from('produtos').upsert(payload);
@@ -37,7 +38,7 @@ export const db = {
         },
         async upsert(client: Client) {
             const payload: any = { ...client };
-            if (client.id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(client.id)) {
+            if (client.id && !isUUID(client.id)) {
                 delete payload.id;
             }
             const { error } = await supabase.from('clientes').upsert(payload);
@@ -58,7 +59,7 @@ export const db = {
         },
         async upsert(employee: Employee) {
             const payload: any = { ...employee };
-            if (employee.id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(employee.id)) {
+            if (employee.id && !isUUID(employee.id)) {
                 delete payload.id;
             }
             const { error } = await supabase.from('funcionarios').upsert(payload);
@@ -161,8 +162,7 @@ export const db = {
         },
         async upsert(account: FinancialAccount) {
             const payload: any = { ...account };
-            // If ID is not a valid UUID (e.g. random string), omit it to let Supabase generate one
-            if (account.id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(account.id)) {
+            if (account.id && !isUUID(account.id)) {
                 delete payload.id;
             }
             const { error } = await supabase.from('financeiro_contas').upsert(payload);
@@ -189,7 +189,7 @@ export const db = {
         },
         async upsert(supplier: Supplier) {
             const payload: any = { ...supplier };
-            if (supplier.id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(supplier.id)) {
+            if (supplier.id && !isUUID(supplier.id)) {
                 delete payload.id;
             }
             const { error } = await supabase.from('fornecedores').upsert(payload);
