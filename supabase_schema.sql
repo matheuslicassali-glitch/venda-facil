@@ -37,6 +37,7 @@ CREATE TABLE produtos (
   cofins_cst TEXT,
   cofins_aliquota DECIMAL(5,2),
   icms_aliquota DECIMAL(5,2),
+  validade TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
