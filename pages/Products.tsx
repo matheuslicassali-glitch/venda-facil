@@ -118,7 +118,7 @@ const Products: React.FC<ProductsProps> = ({ onNotify }) => {
     setLoading(true);
 
     const productData: Product = {
-      id: editingProduct ? editingProduct.id : '',
+      id: editingProduct ? editingProduct.id : undefined,
       nome: formData.nome,
       sku: formData.sku,
       codigo_barras: formData.codigo_barras,

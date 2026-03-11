@@ -82,7 +82,7 @@ const Employees: React.FC<EmployeesProps> = ({ onNotify }) => {
     setLoading(true);
 
     const empData: Employee = {
-      id: editingEmp ? editingEmp.id : '',
+      id: editingEmp ? editingEmp.id : undefined as any,
       nome: formData.nome,
       cargo: formData.cargo as any,
       cpf: formData.cpf,

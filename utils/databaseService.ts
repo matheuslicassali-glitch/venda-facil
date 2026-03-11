@@ -1,7 +1,7 @@
 import { supabase } from './supabaseClient';
 import { Product, Client, Employee, Sale, CashSession, CashTransaction, FinancialAccount, Supplier } from '../types';
 
-const isUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+export const isUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
 export const generateUUID = () => {
     if (typeof window !== 'undefined' && window.crypto && window.crypto.randomUUID) {
@@ -187,6 +187,10 @@ export const db = {
                 xml: sale.xml,
                 tipo_operacao: sale.tipo_operacao
             };
+
+            if (sale.id && isUUID(sale.id)) {
+                payload.id = sale.id;
+            }
 
             const { data, error: saleError } = await supabase.from('vendas').insert(payload).select().single();
 

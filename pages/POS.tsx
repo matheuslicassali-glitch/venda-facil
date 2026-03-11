@@ -29,7 +29,7 @@ import { Modal } from '../components/ui/Modal';
 import { Product, Sale, SaleItem, Client, CashSession, Employee, CompanySettings } from '../types';
 import { generateNFeXML } from '../utils/nfeXmlService';
 import { signNFeXML } from '../utils/signatureService';
-import { db } from '../utils/databaseService';
+import { db, generateUUID } from '../utils/databaseService';
 
 interface POSProps {
   onNotify: (message: string, type: 'success' | 'error') => void;
@@ -183,7 +183,7 @@ const POS: React.FC<POSProps> = ({ onNotify, currentUser }) => {
       ));
     } else {
       setCart([...cart, {
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         produto_id: product.id,
         nome: product.nome,
         quantidade: 1,
@@ -302,6 +302,7 @@ const POS: React.FC<POSProps> = ({ onNotify, currentUser }) => {
     }
 
     const newSalePayload: any = {
+      id: generateUUID(),
       data_venda: new Date().toISOString(),
       valor_total: finalTotal,
       desconto_total: parseFloat(discount),

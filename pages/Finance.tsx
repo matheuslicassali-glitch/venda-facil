@@ -66,7 +66,7 @@ const Finance: React.FC<FinanceProps> = ({ onNotify }) => {
         e.preventDefault();
         setLoading(true);
         const newAcc: FinancialAccount = {
-            id: '',
+            id: undefined as any,
             descricao: formData.descricao,
             valor: parseFloat(formData.valor),
             tipo: formData.tipo,

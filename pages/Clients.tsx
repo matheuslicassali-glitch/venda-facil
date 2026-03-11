@@ -102,7 +102,7 @@ const Clients: React.FC<ClientsProps> = ({ onNotify }) => {
         setLoading(true);
 
         const clientData: Client = {
-            id: editingClient ? editingClient.id : '',
+            id: editingClient ? editingClient.id : undefined as any,
             nome: formData.nome,
             razao_social: formData.razao_social,
             documento: formData.documento,

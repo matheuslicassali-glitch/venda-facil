@@ -54,7 +54,7 @@ const Suppliers: React.FC<SuppliersProps> = ({ onNotify }) => {
     setLoading(true);
 
     const supplierData: Supplier = {
-      id: editingSup ? editingSup.id : '',
+      id: editingSup ? editingSup.id : undefined as any,
       ...formData
     };
 

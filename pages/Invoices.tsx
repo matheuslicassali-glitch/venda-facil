@@ -4,7 +4,7 @@ import { FileText, Plus, Download, Search, AlertCircle, CheckCircle2, Clock, Ref
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
-import { db } from '../utils/databaseService';
+import { db, generateUUID } from '../utils/databaseService';
 import { Invoice, Sale } from '../types';
 
 const Invoices: React.FC = () => {
@@ -86,7 +86,7 @@ const Invoices: React.FC = () => {
       if (saleToReturn) {
         const returnSale: Sale = {
           ...saleToReturn,
-          id: '',
+          id: generateUUID(),
           data_venda: new Date().toISOString(),
           tipo_operacao: 'devolucao',
           valor_total: -saleToReturn.valor_total,
