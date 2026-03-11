@@ -1,12 +1,18 @@
 
 import React, { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, Building2, Store, FileText, Smartphone, ShieldCheck, Mail, Phone, MapPin } from 'lucide-react';
+import { Settings as SettingsIcon, Building2, Store, FileText, Smartphone, ShieldCheck, Mail, Phone, MapPin, Globe, CreditCard, Lock } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { db } from '../utils/databaseService';
-import { CompanySettings } from '../types';
+import { CompanySettings, Permission } from '../types';
+import { formatCNPJ, formatCEP, formatPhone } from '../utils/validation';
 
-const Settings: React.FC<{ onNotify: (msg: string, type: 'success' | 'error') => void }> = ({ onNotify }) => {
+interface SettingsProps {
+    onNotify: (msg: string, type: 'success' | 'error') => void;
+    currentUser: { id: string, name: string, cargo: string, permissions: Permission[] } | null;
+}
+
+const Settings: React.FC<SettingsProps> = ({ onNotify, currentUser }) => {
     const [loading, setLoading] = useState(false);
     const [settings, setSettings] = useState<CompanySettings>({
         cnpj: '',
@@ -34,6 +40,8 @@ const Settings: React.FC<{ onNotify: (msg: string, type: 'success' | 'error') =>
         }
     });
 
+    const isSuperAdmin = currentUser?.cargo === 'Administrador';
+
     useEffect(() => {
         loadSettings();
     }, []);
@@ -43,35 +51,32 @@ const Settings: React.FC<{ onNotify: (msg: string, type: 'success' | 'error') =>
         try {
             const data = await db.settings.get();
             if (data) {
-                setSettings(prev => ({
-                    ...prev,
+                setSettings({
+                    ...settings,
                     ...data,
-                    // Map database fields to the nested structure if necessary, 
-                    // or ensure types match the database schema.
-                    // The schema has flat fields like logradouro, numero, etc.
+                    cnpj: formatCNPJ(data.cnpj || ''),
                     endereco: {
                         logradouro: data.logradouro || '',
                         numero: data.numero || '',
                         bairro: data.bairro || '',
                         cidade: data.cidade || '',
                         uf: data.uf || '',
-                        cep: data.cep || '',
+                        cep: formatCEP(data.cep || ''),
                         ibge_cidade: data.ibge_cidade || ''
                     },
                     contato: {
                         email: data.email_contato || '',
-                        telefone: data.telefone_contato || ''
+                        telefone: formatPhone(data.telefone_contato || '')
                     },
                     fiscal: {
                         csc: data.fiscal_csc || '',
                         csc_id: data.fiscal_csc_id || '',
-                        ambiente: data.fiscal_ambiente || 'homologacao',
-                        certificado_vencimento: data.certificado_vencimento
+                        ambiente: data.fiscal_ambiente || 'homologacao'
                     }
-                }));
+                });
             }
         } catch (err) {
-            onNotify('❌ Erro ao carregar configurações.', 'error');
+            onNotify('❌ Erro ao carregar configurações matriz.', 'error');
         } finally {
             setLoading(false);
         }
@@ -79,10 +84,21 @@ const Settings: React.FC<{ onNotify: (msg: string, type: 'success' | 'error') =>
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!isSuperAdmin) {
+            onNotify('❌ Apenas o Administrador Master pode alterar dados da empresa.', 'error');
+            return;
+        }
+
+        const rawCnpj = settings.cnpj.replace(/\D/g, '');
+        if (rawCnpj.length !== 14) {
+             onNotify('⚠️ CNPJ Inválido!', 'error');
+             return;
+        }
+
         setLoading(true);
 
         const dbData = {
-            cnpj: settings.cnpj,
+            cnpj: rawCnpj,
             inscricao_estadual: settings.inscricao_estadual,
             razao_social: settings.razao_social,
             nome_fantasia: settings.nome_fantasia,
@@ -92,262 +108,182 @@ const Settings: React.FC<{ onNotify: (msg: string, type: 'success' | 'error') =>
             bairro: settings.endereco.bairro,
             cidade: settings.endereco.cidade,
             uf: settings.endereco.uf,
-            cep: settings.endereco.cep,
+            cep: settings.endereco.cep.replace(/\D/g, ''),
             ibge_cidade: settings.endereco.ibge_cidade,
             email_contato: settings.contato.email,
-            telefone_contato: settings.contato.telefone,
+            telefone_contato: settings.contato.telefone.replace(/\D/g, ''),
             fiscal_csc: settings.fiscal.csc,
             fiscal_csc_id: settings.fiscal.csc_id,
-            fiscal_ambiente: settings.fiscal.ambiente,
-            certificado_vencimento: settings.fiscal.certificado_vencimento
+            fiscal_ambiente: settings.fiscal.ambiente
         };
 
         try {
             await db.settings.update(dbData);
-            onNotify('✅ Configurações salvas com sucesso!', 'success');
+            onNotify('✅ Configurações da matriz atualizadas!', 'success');
             loadSettings();
         } catch (err) {
-            onNotify('❌ Erro ao salvar configurações.', 'error');
+            onNotify('❌ Erro crítico ao salvar configurações.', 'error');
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="animate-in fade-in duration-500 max-w-4xl">
-            <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+        <div className="animate-in fade-in duration-500 max-w-5xl space-y-10 pb-20">
+            <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800 tracking-tight">Configurações do Sistema</h1>
-                    <p className="text-gray-600">Dados da empresa e parâmetros fiscais (SEFAZ)</p>
+                    <h1 className="text-2xl font-black text-gray-800 tracking-tight">Configurações Base</h1>
+                    <p className="text-gray-600 font-medium">Dados do emitente e integração fiscal SEFAZ</p>
                 </div>
-                <Button onClick={handleSave} disabled={loading}>
-                    {loading ? 'Salvando...' : 'Salvar Alterações'}
-                </Button>
+                {isSuperAdmin && (
+                    <Button onClick={handleSave} disabled={loading} className="bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-500/20 px-10">
+                        {loading ? 'Sincronizando...' : 'Salvar Alterações'}
+                    </Button>
+                )}
             </header>
 
-            <form onSubmit={handleSave} className="space-y-8 pb-20">
-                {/* Dados da Empresa */}
-                <section className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex items-center gap-2">
-                        <Building2 className="text-blue-600" size={20} />
-                        <h2 className="font-black text-gray-700 uppercase tracking-widest text-sm">Dados do Emitente</h2>
-                    </div>
-                    <div className="p-6 space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                            <Input
-                                label="Razão Social"
-                                placeholder="Nome empresarial completo"
-                                required
-                                value={settings.razao_social}
-                                onChange={e => setSettings({ ...settings, razao_social: e.target.value })}
-                            />
-                            <Input
-                                label="Nome Fantasia"
-                                placeholder="Nome da loja"
-                                required
-                                value={settings.nome_fantasia}
-                                onChange={e => setSettings({ ...settings, nome_fantasia: e.target.value })}
-                            />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <Input
-                                label="CNPJ"
-                                placeholder="00.000.000/0000-00"
-                                required
-                                value={settings.cnpj}
-                                onChange={e => setSettings({ ...settings, cnpj: e.target.value })}
-                            />
-                            <Input
-                                label="Inscrição Estadual"
-                                placeholder="Número ou ISENTO"
-                                required
-                                value={settings.inscricao_estadual}
-                                onChange={e => setSettings({ ...settings, inscricao_estadual: e.target.value })}
-                            />
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Regime Tributário (CRT)</label>
-                            <select
-                                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium text-gray-700"
-                                value={settings.crt}
-                                onChange={e => setSettings({ ...settings, crt: e.target.value as any })}
-                            >
-                                <option value="1">1 - Simples Nacional</option>
-                                <option value="2">2 - Simples Nacional (Excesso de Sublimite)</option>
-                                <option value="3">3 - Regime Normal (Lucro Presumido/Real)</option>
-                            </select>
-                        </div>
-                    </div>
-                </section>
-
-                {/* Endereço */}
-                <section className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex items-center gap-2">
-                        <MapPin className="text-orange-600" size={20} />
-                        <h2 className="font-black text-gray-700 uppercase tracking-widest text-sm">Endereço Fiscal</h2>
-                    </div>
-                    <div className="p-6 space-y-4">
-                        <div className="grid grid-cols-4 gap-4">
-                            <div className="col-span-3">
-                                <Input
-                                    label="Logradouro"
-                                    placeholder="Rua, Av, etc"
-                                    value={settings.endereco.logradouro}
-                                    onChange={e => setSettings({ ...settings, endereco: { ...settings.endereco, logradouro: e.target.value } })}
-                                />
-                            </div>
-                            <Input
-                                label="Nº"
-                                placeholder="123"
-                                value={settings.endereco.numero}
-                                onChange={e => setSettings({ ...settings, endereco: { ...settings.endereco, numero: e.target.value } })}
-                            />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <Input
-                                label="Bairro"
-                                placeholder="Centro"
-                                value={settings.endereco.bairro}
-                                onChange={e => setSettings({ ...settings, endereco: { ...settings.endereco, bairro: e.target.value } })}
-                            />
-                            <Input
-                                label="CEP"
-                                placeholder="00000-000"
-                                value={settings.endereco.cep}
-                                onChange={e => setSettings({ ...settings, endereco: { ...settings.endereco, cep: e.target.value } })}
-                            />
-                        </div>
-                        <div className="grid grid-cols-3 gap-4">
-                            <div className="col-span-2">
-                                <Input
-                                    label="Cidade"
-                                    placeholder="Nome da Cidade"
-                                    value={settings.endereco.cidade}
-                                    onChange={e => setSettings({ ...settings, endereco: { ...settings.endereco, cidade: e.target.value } })}
-                                />
-                            </div>
-                            <Input
-                                label="UF"
-                                placeholder="SP"
-                                value={settings.endereco.uf}
-                                onChange={e => setSettings({ ...settings, endereco: { ...settings.endereco, uf: e.target.value } })}
-                            />
-                        </div>
-                        <Input
-                            label="Código IBGE Município"
-                            placeholder="Ex: 3550308"
-                            value={settings.endereco.ibge_cidade}
-                            onChange={e => setSettings({ ...settings, endereco: { ...settings.endereco, ibge_cidade: e.target.value } })}
-                        />
-                    </div>
-                </section>
-
-                {/* Parâmetros Fiscais / CSC */}
-                <section className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex items-center gap-2">
-                        <ShieldCheck className="text-green-600" size={20} />
-                        <h2 className="font-black text-gray-700 uppercase tracking-widest text-sm">Parâmetros NFC-e / NF-e</h2>
-                    </div>
-                    <div className="p-6 space-y-4">
-                        <div className="bg-blue-50 border border-blue-100 p-4 rounded-lg mb-4">
-                            <p className="text-sm text-blue-700 leading-relaxed">
-                                <strong>Nota:</strong> O CSC (Código de Segurança do Contribuinte) e o CSC ID são obrigatórios para a geração do QR Code em notas de consumidor (NFC-e).
-                            </p>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <Input
-                                label="ID do CSC"
-                                placeholder="000001"
-                                value={settings.fiscal.csc_id}
-                                onChange={e => setSettings({ ...settings, fiscal: { ...settings.fiscal, csc_id: e.target.value } })}
-                            />
-                            <Input
-                                label="Token CSC"
-                                placeholder="Código fornecido pela SEFAZ"
-                                value={settings.fiscal.csc}
-                                onChange={e => setSettings({ ...settings, fiscal: { ...settings.fiscal, csc: e.target.value } })}
-                            />
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Ambiente de Emissão</label>
-                            <div className="flex gap-4">
-                                <label className="flex items-center gap-2 cursor-pointer group">
-                                    <input
-                                        type="radio"
-                                        name="ambiente"
-                                        className="w-4 h-4 text-blue-600 focus:ring-blue-500"
-                                        checked={settings.fiscal.ambiente === 'homologacao'}
-                                        onChange={() => setSettings({ ...settings, fiscal: { ...settings.fiscal, ambiente: 'homologacao' } })}
-                                    />
-                                    <span className="text-sm font-medium text-gray-700 group-hover:text-blue-600">Homologação (Testes)</span>
-                                </label>
-                                <label className="flex items-center gap-2 cursor-pointer group">
-                                    <input
-                                        type="radio"
-                                        name="ambiente"
-                                        className="w-4 h-4 text-blue-600 focus:ring-blue-500"
-                                        checked={settings.fiscal.ambiente === 'producao'}
-                                        onChange={() => setSettings({ ...settings, fiscal: { ...settings.fiscal, ambiente: 'producao' } })}
-                                    />
-                                    <span className="text-sm font-medium text-gray-700 group-hover:text-blue-600">Produção (Valor Fiscal)</span>
-                                </label>
-                            </div>
-                        </div>
-
-                        {/* Certificado Digital */}
-                        <div className="mt-8 border-t pt-6">
-                            <h3 className="text-sm font-black text-gray-700 uppercase tracking-widest mb-4">Certificado Digital (A1)</h3>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Arquivo .pfx / .p12</label>
-                                    <div className="relative">
-                                        <input
-                                            type="file"
-                                            accept=".pfx,.p12"
-                                            className="hidden"
-                                            id="cert-upload"
-                                            onChange={e => {
-                                                const file = e.target.files?.[0];
-                                                if (file) {
-                                                    setSettings({
-                                                        ...settings,
-                                                        fiscal: {
-                                                            ...settings.fiscal,
-                                                            certificado_nome: file.name,
-                                                            certificado_pfx: 'BASE64_MOCK_DATA'
-                                                        }
-                                                    });
-                                                }
-                                            }}
-                                        />
-                                        <label
-                                            htmlFor="cert-upload"
-                                            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-50 border border-gray-200 border-dashed rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
-                                        >
-                                            <FileText size={18} className="text-gray-400" />
-                                            <span className="text-sm font-medium text-gray-600">
-                                                {settings.fiscal.certificado_nome || 'Selecionar certificado A1'}
-                                            </span>
-                                        </label>
-                                    </div>
-                                </div>
-                                <Input
-                                    label="Senha do Certificado"
-                                    type="password"
-                                    placeholder="Senha de exportação"
-                                    value={settings.fiscal.certificado_senha || ''}
-                                    onChange={e => setSettings({ ...settings, fiscal: { ...settings.fiscal, certificado_senha: e.target.value } })}
-                                />
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <div className="flex justify-end gap-3 mt-8">
-                    <Button variant="ghost" type="button">Cancelar</Button>
-                    <Button type="submit" disabled={loading}>{loading ? 'Salvando...' : 'Salvar Alterações'}</Button>
+            {!isSuperAdmin && (
+                <div className="bg-amber-50 border border-amber-200 p-6 rounded-3xl flex items-center gap-4 text-amber-800">
+                    <div className="p-3 bg-amber-100 rounded-2xl"><Lock size={24} /></div>
+                    <p className="font-black text-xs uppercase tracking-widest leading-relaxed">
+                        Acesso Restrito: Estas configurações impactam a emissão de notas fiscais e só podem ser alteradas por um <span className="text-amber-600 underline">Administrador Total</span>.
+                    </p>
                 </div>
+            )}
+
+            <form onSubmit={handleSave} className={`space-y-10 ${!isSuperAdmin ? 'opacity-70 pointer-events-none grayscale-[0.5]' : ''}`}>
+                {/* Identidade Jurídica */}
+                <section className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div className="p-5 border-b border-gray-100 bg-gray-50/50 flex items-center gap-3">
+                        <Building2 className="text-indigo-600" size={20} />
+                        <h2 className="font-black text-gray-700 uppercase tracking-widest text-[10px]">Identidade Jurídica e Fiscal</h2>
+                    </div>
+                    <div className="p-8 space-y-6">
+                        <div className="grid grid-cols-2 gap-6">
+                            <Input label="Razão Social (Completo)" placeholder="Nome jurídico da empresa" required value={settings.razao_social} onChange={e => setSettings({ ...settings, razao_social: e.target.value })} />
+                            <Input label="Nome de Fachada / Fantasia" placeholder="Marca da sua loja" required value={settings.nome_fantasia} onChange={e => setSettings({ ...settings, nome_fantasia: e.target.value })} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-6">
+                            <Input label="CNPJ" placeholder="00.000.000/0000-00" required value={settings.cnpj} onChange={e => setSettings({ ...settings, cnpj: formatCNPJ(e.target.value) })} />
+                            <Input label="Inscrição Estadual" placeholder="Apenas números ou ISENTO" required value={settings.inscricao_estadual} onChange={e => setSettings({ ...settings, inscricao_estadual: e.target.value })} />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Regime Tributário (CRT)</label>
+                            <div className="grid grid-cols-3 gap-3">
+                                {[
+                                    { id: '1', label: 'Simples Nacional' },
+                                    { id: '2', label: 'Simples (Excesso)' },
+                                    { id: '3', label: 'Regime Normal' }
+                                ].map(crt => (
+                                    <button
+                                        key={crt.id}
+                                        type="button"
+                                        onClick={() => setSettings({ ...settings, crt: crt.id as any })}
+                                        className={`p-4 rounded-2xl border-2 font-black text-[10px] uppercase tracking-widest transition-all ${settings.crt === crt.id ? 'bg-indigo-50 border-indigo-500 text-indigo-700 shadow-inner' : 'bg-white border-gray-100 text-gray-400 hover:border-gray-200'}`}
+                                    >
+                                        {crt.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Localização e Logística */}
+                <section className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div className="p-5 border-b border-gray-100 bg-gray-50/50 flex items-center gap-3">
+                        <MapPin className="text-orange-600" size={20} />
+                        <h2 className="font-black text-gray-700 uppercase tracking-widest text-[10px]">Endereço Fiscal e Contatos</h2>
+                    </div>
+                    <div className="p-8 space-y-6">
+                        <div className="grid grid-cols-4 gap-6">
+                            <div className="col-span-1">
+                                <Input label="CEP" placeholder="00000-000" value={settings.endereco.cep} onChange={e => setSettings({ ...settings, endereco: { ...settings.endereco, cep: formatCEP(e.target.value) } })} />
+                            </div>
+                            <div className="col-span-2">
+                                <Input label="Logradouro" placeholder="Av / Rua / Alameda" value={settings.endereco.logradouro} onChange={e => setSettings({ ...settings, endereco: { ...settings.endereco, logradouro: e.target.value } })} />
+                            </div>
+                            <div className="col-span-1">
+                                <Input label="Número" placeholder="S/N" value={settings.endereco.numero} onChange={e => setSettings({ ...settings, endereco: { ...settings.endereco, numero: e.target.value } })} />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-6">
+                            <Input label="Bairro" placeholder="Vila Nova" value={settings.endereco.bairro} onChange={e => setSettings({ ...settings, endereco: { ...settings.endereco, bairro: e.target.value } })} />
+                            <Input label="Cidade" placeholder="Cidade" value={settings.endereco.cidade} onChange={e => setSettings({ ...settings, endereco: { ...settings.endereco, cidade: e.target.value } })} />
+                            <Input label="Código IBGE (7 dígitos)" placeholder="3550308" value={settings.endereco.ibge_cidade} onChange={e => setSettings({ ...settings, endereco: { ...settings.endereco, ibge_cidade: e.target.value.replace(/\D/g, '').substring(0, 7) } })} />
+                        </div>
+                        <div className="grid grid-cols-3 gap-6">
+                             <div className="space-y-2">
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">UF / Estado</label>
+                                <select 
+                                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    value={settings.endereco.uf} 
+                                    onChange={e => setSettings({ ...settings, endereco: { ...settings.endereco, uf: e.target.value } })}
+                                >
+                                    <option value="">Selecione</option>
+                                    {['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'].map(uf => (
+                                        <option key={uf} value={uf}>{uf}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <Input label="E-mail Matriz" type="email" placeholder="financeiro@empresa.com" value={settings.contato.email} onChange={e => setSettings({ ...settings, contato: { ...settings.contato, email: e.target.value } })} />
+                            <Input label="Telefone Comercial" placeholder="(00) 0000-0000" value={settings.contato.telefone} onChange={e => setSettings({ ...settings, contato: { ...settings.contato, telefone: formatPhone(e.target.value) } })} />
+                        </div>
+                    </div>
+                </section>
+
+                {/* Parâmetros Fiscais SEFAZ */}
+                <section className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div className="p-5 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <ShieldCheck className="text-emerald-600" size={20} />
+                            <h2 className="font-black text-gray-700 uppercase tracking-widest text-[10px]">Configuração NFC-e / NF-e</h2>
+                        </div>
+                        <div className="flex bg-gray-100 p-1 rounded-2xl gap-1">
+                                {(['homologacao', 'producao'] as const).map(env => (
+                                    <button
+                                        key={env}
+                                        type="button"
+                                        onClick={() => setSettings({ ...settings, fiscal: { ...settings.fiscal, ambiente: env } })}
+                                        className={`px-6 py-2 text-[9px] font-black uppercase tracking-widest rounded-xl transition-all ${settings.fiscal.ambiente === env ? (env === 'producao' ? 'bg-red-600 text-white shadow-lg' : 'bg-white text-emerald-600 shadow-md') : 'text-gray-400 hover:text-gray-600'}`}
+                                    >
+                                        {env}
+                                    </button>
+                                ))}
+                        </div>
+                    </div>
+                    <div className="p-8">
+                         <div className="bg-amber-50 border border-amber-100 p-5 rounded-3xl flex items-start gap-4 mb-8">
+                                <div className="p-2 bg-amber-100 rounded-xl text-amber-700"><Globe size={20} /></div>
+                                <div className="space-y-1">
+                                    <p className="font-black text-[10px] text-amber-800 uppercase tracking-widest">Código de Segurança do Contribuinte (CSC)</p>
+                                    <p className="text-xs text-amber-700 leading-tight">Estes dados são gerados no portal do contribuinte do seu estado e são essenciais para a validade do QR-Code da NFC-e.</p>
+                                </div>
+                         </div>
+                        <div className="grid grid-cols-2 gap-8">
+                            <div className="space-y-6">
+                                <Input label="Identificador CSC (Número)" placeholder="Ex: 000001" value={settings.fiscal.csc_id} onChange={e => setSettings({ ...settings, fiscal: { ...settings.fiscal, csc_id: e.target.value } })} />
+                                <Input label="Token/Chave CSC" placeholder="Ex: A5S8-D7F4-..." value={settings.fiscal.csc} onChange={e => setSettings({ ...settings, fiscal: { ...settings.fiscal, csc: e.target.value } })} />
+                            </div>
+                            <div className="bg-gray-50 p-6 rounded-3xl border border-gray-100 flex flex-col items-center justify-center text-center space-y-4">
+                                <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center text-gray-300">
+                                    <CreditCard size={32} />
+                                </div>
+                                <div>
+                                    <p className="font-black text-[10px] text-gray-600 uppercase tracking-widest">Certificado Digital</p>
+                                    <p className="text-xs text-gray-400 mt-1 max-w-[200px]">A integração com certificado A1 é configurada via módulo servidor.</p>
+                                </div>
+                                <Button variant="ghost" className="border border-gray-200 text-[10px] font-black uppercase tracking-widest">Fazer Upload .PFX</Button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
             </form>
+            
+
+            <style>{`
+                .grayscale-50 { filter: grayscale(0.5); }
+            `}</style>
         </div>
     );
 };

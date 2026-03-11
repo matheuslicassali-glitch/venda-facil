@@ -1,13 +1,18 @@
 
 import React, { useState, useEffect } from 'react';
-import { FileText, Plus, Download, Search, AlertCircle, CheckCircle2, Clock, RefreshCw, Eye, Key, Trash2, ReceiptText, RotateCcw } from 'lucide-react';
+import { FileText, Plus, Download, Search, AlertCircle, CheckCircle2, Clock, RefreshCw, Eye, Key, Trash2, ReceiptText, RotateCcw, ShieldAlert, Lock, Hash } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { db, generateUUID } from '../utils/databaseService';
-import { Invoice, Sale } from '../types';
+import { Invoice, Sale, Permission } from '../types';
 
-const Invoices: React.FC = () => {
+interface InvoicesProps {
+    onNotify: (message: string, type: 'success' | 'error') => void;
+    currentUser?: { id: string, name: string, cargo: string, permissions: Permission[] } | null;
+}
+
+const Invoices: React.FC<InvoicesProps> = ({ onNotify, currentUser }) => {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'Todas' | 'NFe' | 'NFCe'>('Todas');
@@ -17,6 +22,12 @@ const Invoices: React.FC = () => {
   const [inutilizingRange, setInutilizingRange] = useState(false);
   const [justification, setJustification] = useState('');
   const [range, setRange] = useState({ start: '', end: '' });
+
+  const isAdminOrGerente = currentUser?.cargo === 'Administrador' || currentUser?.cargo === 'Gerente';
+
+  useEffect(() => {
+    loadSales();
+  }, []);
 
   const loadSales = async () => {
     setLoading(true);
@@ -35,20 +46,23 @@ const Invoices: React.FC = () => {
       }));
       setInvoices(mapped);
     } catch (err) {
-      console.error('Erro ao carregar notas:', err);
+      onNotify('❌ Falha ao sincronizar documentos fiscais.', 'error');
     } finally {
       setLoading(false);
     }
   };
 
   const handleCancelInvoice = async () => {
+    if (!isAdminOrGerente) {
+        onNotify('❌ Permissão negada para cancelamento fiscal.', 'error');
+        return;
+    }
     if (justification.length < 15) {
-      alert('A justificativa deve ter pelo menos 15 caracteres.');
+      onNotify('⚠️ A justificativa deve ter pelo menos 15 caracteres.', 'error');
       return;
     }
     setLoading(true);
     try {
-      // Find the sale and update it
       const { data: sale } = await db.supabase.from('vendas').select('*').eq('id', cancelingInvoice.id).single();
       if (sale) {
         await db.supabase.from('vendas').update({
@@ -56,67 +70,39 @@ const Invoices: React.FC = () => {
           fiscal_status: 'erro'
         }).eq('id', cancelingInvoice.id);
 
+        onNotify('✅ Protocolo de cancelamento enviado com sucesso!', 'success');
         setCancelingInvoice(null);
         setJustification('');
         loadSales();
       }
     } catch (err) {
-      console.error('Erro ao cancelar nota:', err);
+      onNotify('❌ Erro no processamento do cancelamento.', 'error');
     } finally {
       setLoading(false);
     }
   };
 
   const handleInutilizar = () => {
+    if (!isAdminOrGerente) {
+        onNotify('❌ Permissão negada para inutilização de faixa.', 'error');
+        return;
+    }
     if (justification.length < 15) {
-      alert('A justificativa deve ter pelo menos 15 caracteres.');
+      onNotify('⚠️ Justificativa insuficiente.', 'error');
       return;
     }
-    alert(`Números ${range.start} até ${range.end} inutilizados com sucesso.`);
+    onNotify(`✅ Faixa ${range.start} a ${range.end} inutilizada no SEFAZ.`, 'success');
     setInutilizingRange(false);
     setJustification('');
     setRange({ start: '', end: '' });
   };
-
-  const handleDevolucao = async (saleId: string) => {
-    if (!window.confirm('Deseja gerar uma nota de devolução para esta venda?')) return;
-    setLoading(true);
-    try {
-      const { data: saleToReturn } = await db.supabase.from('vendas').select('*').eq('id', saleId).single();
-      if (saleToReturn) {
-        const returnSale: Sale = {
-          ...saleToReturn,
-          id: generateUUID(),
-          data_venda: new Date().toISOString(),
-          tipo_operacao: 'devolucao',
-          valor_total: -saleToReturn.valor_total,
-          desconto_total: 0,
-          status: 'concluida',
-          fiscal_status: 'pendente',
-          nfe_numero: Math.floor(100000000 + Math.random() * 900000000).toString().substring(0, 9),
-          xml: undefined,
-          chave_acesso: undefined
-        };
-        await db.sales.create(returnSale);
-        alert('Nota de Devolução gerada com sucesso! Agora você pode emitir o XML.');
-        loadSales();
-      }
-    } catch (err) {
-      console.error('Erro ao gerar devolução:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadSales();
-  }, []);
 
   const handleSync = () => {
     setLoading(true);
     setTimeout(() => {
       loadSales();
       setLoading(false);
+      onNotify('🔄 Base fiscal sincronizada!', 'success');
     }, 800);
   };
 
@@ -129,14 +115,15 @@ const Invoices: React.FC = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    onNotify('💾 XML baixado.', 'success');
   };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'Autorizada':
-        return <span className="flex items-center gap-1.5 px-3 py-1 bg-green-100 text-green-700 rounded-full text-[10px] font-black uppercase tracking-tight"><CheckCircle2 size={12} /> Autorizada</span>;
+        return <span className="flex items-center gap-1.5 px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-[10px] font-black uppercase tracking-tight"><CheckCircle2 size={12} /> Autorizada</span>;
       case 'Pendente':
-        return <span className="flex items-center gap-1.5 px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-[10px] font-black uppercase tracking-tight"><Clock size={12} /> Pendente</span>;
+        return <span className="flex items-center gap-1.5 px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-[10px] font-black uppercase tracking-tight"><Clock size={12} /> Pendente</span>;
       case 'Cancelada':
         return <span className="flex items-center gap-1.5 px-3 py-1 bg-red-100 text-red-700 rounded-full text-[10px] font-black uppercase tracking-tight"><AlertCircle size={12} /> Cancelada</span>;
       default: return null;
@@ -150,50 +137,56 @@ const Invoices: React.FC = () => {
   });
 
   return (
-    <div className="animate-in fade-in duration-500">
-      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+    <div className="animate-in fade-in duration-500 space-y-8">
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Documentos Fiscais</h1>
-          <p className="text-gray-600">Gestão de NFe e NFCe emitida pela empresa</p>
+          <h1 className="text-2xl font-black text-gray-800 tracking-tight">Cofre Fiscal (SEFAZ)</h1>
+          <p className="text-gray-600 font-medium">Arquivamento e monitoramento de NFe e NFCe emitidas</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="ghost" onClick={() => setInutilizingRange(true)} className="text-red-600 hover:bg-red-50 border-red-100 uppercase text-[10px] font-black">
-            Inutilizar
-          </Button>
-          <Button variant="secondary" onClick={handleSync} disabled={loading}>
+            {!isAdminOrGerente ? (
+                 <div className="flex items-center gap-2 px-4 bg-amber-50 text-amber-600 rounded-2xl border border-amber-100">
+                    <Lock size={16} /> <span className="text-[10px] font-black uppercase">Operações Restritas</span>
+                 </div>
+            ) : (
+                <Button variant="ghost" onClick={() => setInutilizingRange(true)} className="text-red-600 hover:bg-red-50 border-red-100 uppercase text-[10px] font-black tracking-widest px-6 h-11">
+                    Inutilizar Faixa
+                </Button>
+            )}
+          <Button variant="ghost" onClick={handleSync} disabled={loading} className="border border-gray-200 h-11 px-4">
             <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
-            <span>Sincronizar</span>
           </Button>
-          <div className="flex items-center gap-1">
-            <Button onClick={() => window.dispatchEvent(new CustomEvent('navigate', { detail: 'pdv' }))} className="bg-blue-600 rounded-r-none">
-              NFC-e (PDV)
-            </Button>            <Button onClick={() => window.dispatchEvent(new CustomEvent('navigate', { detail: 'nfe_manual' }))} className="bg-indigo-600 rounded-l-none">
+          <div className="flex items-center bg-gray-100 p-1 rounded-2xl gap-1">
+            <Button onClick={() => window.dispatchEvent(new CustomEvent('navigate', { detail: 'pdv' }))} className="bg-blue-600 rounded-xl h-9 text-[10px] font-black px-4 uppercase tracking-widest shadow-lg shadow-blue-500/20">
+              NFC-e
+            </Button>
+            <Button onClick={() => window.dispatchEvent(new CustomEvent('navigate', { detail: 'nfe_manual' }))} className="bg-indigo-600 rounded-xl h-9 text-[10px] font-black px-4 uppercase tracking-widest shadow-lg shadow-indigo-500/20">
               NF-e
             </Button>
           </div>
         </div>
       </header>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex flex-wrap gap-4">
-          <div className="relative flex-1 max-w-sm">
-            <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="p-5 border-b border-gray-100 bg-gray-50/50 flex flex-wrap gap-4 items-center justify-between">
+          <div className="relative flex-1 max-w-md">
+            <span className="absolute inset-y-0 left-0 pl-4 flex items-center text-gray-400">
               <Search size={18} />
             </span>
             <input
               type="text"
-              placeholder="Buscar por número ou chave..."
-              className="pl-10 w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Pesquisar por número, série ou chave de acesso..."
+              className="pl-12 w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold transition-all shadow-sm"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <div className="flex bg-gray-100 p-1 rounded-lg">
+          <div className="flex bg-gray-100 p-1.5 rounded-2xl gap-1">
             {(['Todas', 'NFe', 'NFCe'] as const).map((t) => (
               <button
                 key={t}
                 onClick={() => setFilterType(t)}
-                className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${filterType === t ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                className={`px-6 py-2 text-[10px] font-black rounded-xl uppercase tracking-widest transition-all ${filterType === t ? 'bg-white text-blue-600 shadow-md scale-105' : 'text-gray-400 hover:text-gray-600'}`}
               >
                 {t}
               </button>
@@ -204,60 +197,61 @@ const Invoices: React.FC = () => {
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className="bg-gray-50 border-b border-gray-100 text-xs font-bold text-gray-500 uppercase tracking-wider">
-                <th className="px-6 py-4">Documento / Chave</th>
-                <th className="px-6 py-4">Tipo</th>
-                <th className="px-6 py-4">Data Emissão</th>
-                <th className="px-6 py-4">Valor Total</th>
-                <th className="px-6 py-4 text-center">Ações</th>
+              <tr className="bg-gray-50/50 border-b border-gray-100 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                <th className="px-8 py-5">Identificação Doc.</th>
+                <th className="px-8 py-5">Tipo / Série</th>
+                <th className="px-8 py-5">Snapshot Emissão</th>
+                <th className="px-8 py-5">Valor Bruto</th>
+                <th className="px-8 py-5 text-right">Ações Fiscais</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filteredInvoices.map((inv) => (
-                <tr key={inv.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center">
-                        <FileText size={20} />
+                <tr key={inv.id} className="hover:bg-gray-50 transition-all group">
+                  <td className="px-8 py-5">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center shadow-inner group-hover:bg-blue-600 group-hover:text-white transition-all">
+                        <FileText size={24} />
                       </div>
                       <div>
-                        <div className="flex items-center gap-2">
-                          <p className="font-black text-gray-800">#{inv.numero}</p>
+                        <div className="flex items-center gap-3">
+                          <p className="font-black text-gray-800 text-sm tracking-tight">NÚMERO {inv.numero}</p>
                           {getStatusBadge(inv.status)}
                         </div>
-                        <p className="text-[10px] text-gray-400 font-mono flex items-center gap-1 mt-0.5">
-                          <Key size={10} /> {inv.chave ? inv.chave.match(/.{1,4}/g)?.join(' ') : 'GERANDO CHAVE...'}
-                        </p>
+                        <div className="flex items-center gap-1.5 mt-1 text-[10px] text-gray-300 font-black uppercase tracking-widest group-hover:text-blue-500">
+                            <Hash size={12} /> {inv.chave ? inv.chave.substring(0, 20) + '...' : 'GERANDO CHAVE...'}
+                        </div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
-                    <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px] font-black uppercase">
-                      {inv.tipo}
-                    </span>
+                  <td className="px-8 py-5">
+                    <div className="inline-flex flex-col">
+                        <span className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase text-center ${inv.tipo === 'NFe' ? 'bg-indigo-50 text-indigo-600' : 'bg-gray-100 text-gray-500'}`}>
+                            {inv.tipo}
+                        </span>
+                        <span className="text-[8px] font-black text-gray-300 mt-1 uppercase text-center">SÉRIE {inv.serie}</span>
+                    </div>
                   </td>
-                  <td className="px-6 py-4 text-sm font-medium text-gray-500">{inv.data}</td>
-                  <td className="px-6 py-4 font-black text-gray-800">
+                  <td className="px-8 py-5 text-xs font-bold text-gray-500">{inv.data}</td>
+                  <td className="px-8 py-5 font-black text-gray-800 tracking-tight">
                     {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(inv.valor)}
                   </td>
-                  <td className="px-6 py-4 text-center">
-                    <div className="flex justify-center gap-2">
-                      <button onClick={() => setViewingXml(inv.xml || null)} className="p-2 text-gray-400 hover:text-blue-600 transition-colors" title="Ver XML">
-                        <Eye size={18} />
+                  <td className="px-8 py-5 text-right">
+                    <div className="flex justify-end gap-2">
+                      <button onClick={() => setViewingXml(inv.xml || null)} className="p-2.5 text-gray-300 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all" title="Ver XML">
+                        <Eye size={20} />
                       </button>
-                      <button onClick={() => inv.xml && handleDownloadXML(inv.xml, inv.numero)} className="p-2 text-gray-400 hover:text-green-600 transition-colors" title="Download XML">
-                        <Download size={18} />
-                      </button>
-                      <button onClick={() => window.dispatchEvent(new CustomEvent('navigate', { detail: 'venda_comum' }))} className="p-2 text-gray-400 hover:text-indigo-600 transition-colors" title="Ver Nota de Venda Comum">
-                        <ReceiptText size={18} />
+                      <button onClick={() => inv.xml && handleDownloadXML(inv.xml, inv.numero)} className="p-2.5 text-gray-300 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all" title="Download XML">
+                        <Download size={20} />
                       </button>
                       {inv.status !== 'Cancelada' && (
                         <>
-                          <button onClick={() => setCancelingInvoice(inv)} className="p-2 text-gray-400 hover:text-red-600 transition-colors" title="Cancelar Nota">
-                            <Trash2 size={18} />
-                          </button>
-                          <button onClick={() => handleDevolucao(inv.id)} className="p-2 text-gray-400 hover:text-orange-600 transition-colors" title="Gerar Devolução">
-                            <RotateCcw size={18} />
+                          <button 
+                            onClick={isAdminOrGerente ? () => setCancelingInvoice(inv) : () => onNotify('❌ Apenas gerentes podem cancelar notas.', 'error')} 
+                            className={`p-2.5 rounded-xl transition-all ${isAdminOrGerente ? 'text-gray-300 hover:text-red-500 hover:bg-red-50' : 'text-gray-200 opacity-50 cursor-not-allowed'}`} 
+                            title="Cancelar Nota"
+                          >
+                            <Trash2 size={20} />
                           </button>
                         </>
                       )}
@@ -267,9 +261,11 @@ const Invoices: React.FC = () => {
               ))}
               {filteredInvoices.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-20 text-center">
-                    <FileText size={48} className="mx-auto text-gray-200 mb-4" />
-                    <p className="text-gray-500 font-medium">Nenhum documento encontrado.</p>
+                  <td colSpan={6} className="py-24 text-center">
+                    <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-dashed border-gray-200">
+                        <FileText size={40} className="text-gray-200" />
+                    </div>
+                    <p className="text-gray-400 font-black uppercase tracking-widest text-xs">Nenhum documento localizado</p>
                   </td>
                 </tr>
               )}
@@ -278,58 +274,51 @@ const Invoices: React.FC = () => {
         </div>
       </div>
 
-      <Modal isOpen={!!viewingXml} onClose={() => setViewingXml(null)} title="Conteúdo XML da NF-e (Assinado)">
-        <div className="p-4">
-          <pre className="bg-gray-900 text-blue-300 p-6 rounded-xl overflow-x-auto text-xs font-mono max-h-[500px] leading-relaxed">
-            {viewingXml}
-          </pre>
-          <div className="flex justify-end mt-4">
-            <Button onClick={() => setViewingXml(null)}>Fechar</Button>
+      {/* Modals with premium styling */}
+      <Modal isOpen={!!viewingXml} onClose={() => setViewingXml(null)} title="📝 Visualização Auditada XML (NFe-XML)">
+        <div className="pt-4 space-y-6">
+          <div className="bg-gray-900 text-emerald-400 p-8 rounded-3xl overflow-x-auto text-xs font-mono max-h-[500px] leading-relaxed shadow-2xl border-2 border-gray-800 custom-scrollbar">
+            {viewingXml || 'XML não disponível para visualização.'}
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button variant="ghost" onClick={() => setViewingXml(null)}>Voltar</Button>
+            <Button onClick={() => window.print()} className="bg-emerald-600 hover:bg-emerald-700">Imprimir Conteúdo</Button>
           </div>
         </div>
       </Modal>
 
-      <Modal isOpen={!!cancelingInvoice} onClose={() => setCancelingInvoice(null)} title="Cancelar Documento Fiscal">
-        <div className="p-4 space-y-4">
-          <div className="bg-red-50 p-4 rounded-lg flex items-start gap-3 text-red-700">
-            <AlertCircle size={20} className="mt-0.5" />
-            <p className="text-sm font-medium">O cancelamento é irreversível e exige uma justificativa clara de pelo menos 15 caracteres para a SEFAZ.</p>
+      <Modal isOpen={!!cancelingInvoice} onClose={() => setCancelingInvoice(null)} title="⛓️ Protocolo de Estorno Fiscal">
+        <div className="pt-4 space-y-8">
+          <div className="bg-red-50 border-l-4 border-red-500 p-6 rounded-2xl flex items-start gap-4 text-red-800 shadow-sm">
+            <ShieldAlert size={32} className="text-red-500 mt-1 shrink-0" />
+            <div>
+                 <p className="font-black text-xs uppercase tracking-widest mb-1">Cuidado Operacional</p>
+                 <p className="text-sm font-medium leading-relaxed">O cancelamento é um processo IRREVERSÍVEL. Certifique-se de que a mercadoria não saiu do estabelecimento ou que respeita o prazo legal da SEFAZ.</p>
+            </div>
           </div>
-          <Input
-            label="Justificativa do Cancelamento"
-            placeholder="Ex: Erro no preenchimento dos dados do destinatário..."
-            value={justification}
-            onChange={e => setJustification(e.target.value)}
-          />
-          <div className="flex justify-end gap-3 pt-4">
-            <Button variant="ghost" onClick={() => setCancelingInvoice(null)}>Abortar</Button>
-            <Button variant="danger" disabled={justification.length < 15} onClick={handleCancelInvoice}>Confirmar Cancelamento</Button>
+          <div className="space-y-4">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Justificativa Pormenorizada (Mín 15 carac.)</label>
+              <textarea
+                className="w-full h-32 p-5 bg-gray-50 border-2 border-gray-100 rounded-3xl font-bold text-gray-700 focus:border-red-500 outline-none transition-all placeholder:text-gray-300"
+                placeholder="Descreva o motivo real do cancelamento..."
+                value={justification}
+                onChange={e => setJustification(e.target.value)}
+              />
+          </div>
+          <div className="flex justify-end gap-3 pt-6 border-t border-gray-50 flex-col sm:flex-row">
+            <Button variant="ghost" type="button" onClick={() => setCancelingInvoice(null)} className="font-black text-[10px] uppercase">Abortar Operação</Button>
+            <Button variant="danger" disabled={justification.length < 15 || loading} onClick={handleCancelInvoice} className="h-12 px-8 shadow-lg shadow-red-500/20 font-black text-[10px] uppercase">
+                {loading ? 'Transmitindo...' : 'Confirmar Cancelamento'}
+            </Button>
           </div>
         </div>
       </Modal>
 
-      <Modal isOpen={inutilizingRange} onClose={() => setInutilizingRange(false)} title="Inutilizar Numeração (SEFAZ)">
-        <div className="p-4 space-y-4">
-          <div className="bg-orange-50 p-4 rounded-lg flex items-start gap-3 text-orange-700">
-            <AlertCircle size={20} className="mt-0.5" />
-            <p className="text-sm font-medium">Inutilize intervalos de números que não serão emitidos devido a falhas técnicas ou saltos de sequência.</p>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <Input label="Número Inicial" type="number" value={range.start} onChange={e => setRange({ ...range, start: e.target.value })} />
-            <Input label="Número Final" type="number" value={range.end} onChange={e => setRange({ ...range, end: e.target.value })} />
-          </div>
-          <Input
-            label="Justificativa"
-            placeholder="Ex: Quebra de sequencial por erro de sistema local..."
-            value={justification}
-            onChange={e => setJustification(e.target.value)}
-          />
-          <div className="flex justify-end gap-3 pt-4">
-            <Button variant="ghost" onClick={() => setInutilizingRange(false)}>Cancelar</Button>
-            <Button variant="primary" disabled={justification.length < 15 || !range.start || !range.end} onClick={handleInutilizar}>Inutilizar Faixa</Button>
-          </div>
-        </div>
-      </Modal>
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #374151; border-radius: 10px; }
+      `}</style>
     </div>
   );
 };

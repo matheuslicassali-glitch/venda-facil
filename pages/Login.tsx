@@ -7,7 +7,7 @@ import { db } from '../utils/databaseService';
 import { Permission, Employee } from '../types';
 
 interface LoginProps {
-  onLogin: (userData?: { id: string, email: string, name: string, permissions: Permission[] }) => void;
+  onLogin: (userData?: { id: string, email: string, name: string, cargo: string, permissions: Permission[] }) => void;
   onNotify: (message: string, type: 'success' | 'error') => void;
 }
 
@@ -42,6 +42,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onNotify }) => {
           id: masterEmp?.id || '',
           email: MASTER_EMAIL,
           name: "Usuário Master",
+          cargo: "Administrador",
           permissions: allPermissions
         });
       } else if (email && password.length >= 4) {
@@ -51,7 +52,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onNotify }) => {
         // Since we are using a client-side Supabase pattern here, we follow the user's existing logic.
         if (emp) {
           onNotify(`✅ Bem-vindo, ${emp.nome}!`, 'success');
-          onLogin({ id: emp.id, email, name: emp.nome, permissions: emp.permissoes || [] });
+          onLogin({ id: emp.id, email, name: emp.nome, cargo: emp.cargo, permissions: emp.permissoes || [] });
         } else {
           onNotify('❌ Credenciais inválidas ou funcionário inativo.', 'error');
         }

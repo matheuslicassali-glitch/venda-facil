@@ -529,7 +529,7 @@ const POS: React.FC<POSProps> = ({ onNotify, currentUser }) => {
         <form onSubmit={handleAdminVerify} className="space-y-6 text-center">
           <div className="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto"><Lock size={32} /></div>
           <p className="text-sm font-bold text-gray-700">Ação restrita: <strong>{isAdminAuthOpen?.action?.toUpperCase()}</strong>.<br />Insira o PIN de autorização abaixo.</p>
-          <input type="password" placeholder="••••" className="w-32 mx-auto text-4xl text-center font-black tracking-widest bg-gray-50 border-2 rounded-xl py-3 focus:border-red-500 outline-none" value={adminPin} onChange={e => setAdminPin(e.target.value)} maxLength={4} autoFocus />
+          <input type="password" placeholder="••••" className="w-48 mx-auto text-4xl text-center font-black tracking-widest bg-gray-50 border-2 rounded-xl py-3 focus:border-red-500 outline-none" value={adminPin} onChange={e => setAdminPin(e.target.value)} maxLength={6} autoFocus />
           <div className="flex gap-2">
             <Button variant="ghost" className="flex-1" type="button" onClick={() => setIsAdminAuthOpen(null)}>Abortar</Button>
             <Button variant="danger" className="flex-1" type="submit">Liberar Ação</Button>

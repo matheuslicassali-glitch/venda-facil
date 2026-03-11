@@ -29,7 +29,7 @@ const App: React.FC = () => {
 
   // Simple authentication state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState<{ id: string, email: string, name: string, permissions: Permission[] } | null>(null);
+  const [user, setUser] = useState<{ id: string, email: string, name: string, cargo: string, permissions: Permission[] } | null>(null);
   const [isBlocked, setIsBlocked] = useState(false);
 
   useEffect(() => {
@@ -59,7 +59,7 @@ const App: React.FC = () => {
     return () => window.removeEventListener('navigate', handleGlobalNav);
   }, []);
 
-  const handleLogin = (userData?: { id: string, email: string, name: string, permissions: Permission[] }) => {
+  const handleLogin = (userData?: { id: string, email: string, name: string, cargo: string, permissions: Permission[] }) => {
     setIsAuthenticated(true);
     setView('dashboard');
     localStorage.setItem('venda-facil-auth', 'true');
@@ -126,19 +126,19 @@ const App: React.FC = () => {
 
     switch (view) {
       case 'dashboard': return <Dashboard />;
-      case 'produtos': return <Products onNotify={showToast} />;
+      case 'produtos': return <Products onNotify={showToast} currentUser={user} />;
       case 'pdv': return <POS onNotify={showToast} currentUser={user} />;
       case 'relatorios': return <Reports />;
       case 'nfe': return <Invoices />;
-      case 'fornecedores': return <Suppliers onNotify={showToast} />;
-      case 'funcionarios': return <Employees onNotify={showToast} />;
-      case 'estoque': return <Inventory onNotify={showToast} />;
-      case 'clientes': return <Clients onNotify={showToast} />;
+      case 'fornecedores': return <Suppliers onNotify={showToast} currentUser={user} />;
+      case 'funcionarios': return <Employees onNotify={showToast} currentUser={user} />;
+      case 'estoque': return <Inventory onNotify={showToast} currentUser={user} />;
+      case 'clientes': return <Clients onNotify={showToast} currentUser={user} />;
       case 'caixa': return <Cashier onNotify={showToast} currentUser={user} />;
-      case 'financeiro': return <Finance onNotify={showToast} />;
-      case 'configuracoes': return <Settings onNotify={showToast} />;
+      case 'financeiro': return <Finance onNotify={showToast} currentUser={user} />;
+      case 'configuracoes': return <Settings onNotify={showToast} currentUser={user} />;
       case 'venda_comum': return <CommonSales />;
-      case 'nfe_manual': return <NFeManual onNotify={showToast} />;
+      case 'nfe_manual': return <NFeManual onNotify={showToast} currentUser={user} />;
       default: return (
         <div className="flex flex-col items-center justify-center py-20 text-center animate-in fade-in">
           <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center mb-4 text-gray-400">
