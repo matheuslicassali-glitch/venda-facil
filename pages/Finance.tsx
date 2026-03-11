@@ -68,7 +68,7 @@ const Finance: React.FC<FinanceProps> = ({ onNotify }) => {
         const newAcc: FinancialAccount = {
             id: undefined as any,
             descricao: formData.descricao,
-            valor: parseFloat(formData.valor),
+            valor: parseFloat(formData.valor) || 0,
             tipo: formData.tipo,
             vencimento: formData.vencimento,
             status: 'pendente',

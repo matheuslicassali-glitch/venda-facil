@@ -122,10 +122,10 @@ const Products: React.FC<ProductsProps> = ({ onNotify }) => {
       nome: formData.nome,
       sku: formData.sku,
       codigo_barras: formData.codigo_barras,
-      preco_venda: parseFloat(formData.preco_venda),
-      preco_custo: parseFloat(formData.preco_custo),
-      estoque_atual: parseInt(formData.estoque_atual),
-      estoque_minimo: parseInt(formData.estoque_minimo),
+      preco_venda: parseFloat(formData.preco_venda) || 0,
+      preco_custo: parseFloat(formData.preco_custo) || 0,
+      estoque_atual: parseInt(formData.estoque_atual) || 0,
+      estoque_minimo: parseInt(formData.estoque_minimo) || 0,
       unidade: formData.unidade as any,
       categoria: formData.categoria,
       validade: formData.validade,
@@ -135,10 +135,10 @@ const Products: React.FC<ProductsProps> = ({ onNotify }) => {
       cfop: formData.cfop,
       cst_csosn: formData.cst_csosn,
       pis_cst: formData.pis_cst,
-      pis_aliquota: parseFloat(formData.pis_aliquota),
+      pis_aliquota: parseFloat(formData.pis_aliquota) || 0,
       cofins_cst: formData.cofins_cst,
-      cofins_aliquota: parseFloat(formData.cofins_aliquota),
-      icms_aliquota: parseFloat(formData.icms_aliquota)
+      cofins_aliquota: parseFloat(formData.cofins_aliquota) || 0,
+      icms_aliquota: parseFloat(formData.icms_aliquota) || 0
     };
 
     try {

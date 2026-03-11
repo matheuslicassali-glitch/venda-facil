@@ -88,7 +88,7 @@ const Employees: React.FC<EmployeesProps> = ({ onNotify }) => {
       cpf: formData.cpf,
       email: formData.email,
       status: editingEmp ? editingEmp.status : 'Ativo',
-      comissao: parseFloat(formData.comissao),
+      comissao: parseFloat(formData.comissao) || 0,
       permissoes: formData.permissoes
     };
 

@@ -74,21 +74,18 @@ const Cashier: React.FC<CashierProps> = ({ onNotify, currentUser }) => {
         }
         setLoading(true);
         try {
-            const newSessionPayload: any = {
+            const newSession: CashSession = {
+                id: '', // Will be ignored by openSession insert
                 aberto_em: new Date().toISOString(),
-                valor_abertura: parseFloat(formData.valor),
-                valor_fechamento_esperado: parseFloat(formData.valor),
-                status: 'aberto' as const
+                valor_abertura: parseFloat(formData.valor) || 0,
+                valor_fechamento_esperado: parseFloat(formData.valor) || 0,
+                status: 'aberto',
+                vendedor_id: currentUser.id
             };
 
-            if (currentUser.id) {
-                newSessionPayload.vendedor_id = currentUser.id;
-            }
+            const data = await db.cashier.openSession(newSession);
 
-            const { data, error } = await db.supabase.from('caixa_sessoes').insert(newSessionPayload).select().single();
-            if (error) throw error;
-
-            setSession(data as CashSession);
+            setSession(data);
             setIsModalOpen(null);
             onNotify('🔓 Caixa aberto com sucesso!', 'success');
             loadCashierData();
@@ -105,8 +102,9 @@ const Cashier: React.FC<CashierProps> = ({ onNotify, currentUser }) => {
         if (!session) return;
         setLoading(true);
 
-        const val = parseFloat(formData.valor);
-        const newTransPayload = {
+        const val = parseFloat(formData.valor) || 0;
+        const newTrans: CashTransaction = {
+            id: '',
             caixa_id: session.id,
             tipo: transType,
             valor: val,
@@ -115,8 +113,7 @@ const Cashier: React.FC<CashierProps> = ({ onNotify, currentUser }) => {
         };
 
         try {
-            const { error } = await db.supabase.from('caixa_movimentacoes').insert(newTransPayload);
-            if (error) throw error;
+            await db.cashier.addTransaction(newTrans);
 
             const updatedExpected = transType === 'sangria'
                 ? session.valor_fechamento_esperado - val

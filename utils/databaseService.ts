@@ -1,7 +1,10 @@
 import { supabase } from './supabaseClient';
 import { Product, Client, Employee, Sale, CashSession, CashTransaction, FinancialAccount, Supplier } from '../types';
 
-export const isUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+export const isUUID = (id: any) => {
+    if (typeof id !== 'string') return false;
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+};
 
 export const generateUUID = () => {
     if (typeof window !== 'undefined' && window.crypto && window.crypto.randomUUID) {
@@ -39,10 +42,10 @@ export const db = {
                 cfop: product.cfop,
                 cst_csosn: product.cst_csosn,
                 pis_cst: product.pis_cst,
-                pis_aliquota: product.pis_aliquota,
+                pis_aliquota: product.pis_aliquota || 0,
                 cofins_cst: product.cofins_cst,
-                cofins_aliquota: product.cofins_aliquota,
-                icms_aliquota: product.icms_aliquota,
+                cofins_aliquota: product.cofins_aliquota || 0,
+                icms_aliquota: product.icms_aliquota || 0,
                 validade: product.validade
             };
 
@@ -175,11 +178,11 @@ export const db = {
         async create(sale: Sale) {
             const payload: any = {
                 data_venda: sale.data_venda,
-                valor_total: sale.valor_total,
-                desconto_total: sale.desconto_total,
+                valor_total: sale.valor_total || 0,
+                desconto_total: sale.desconto_total || 0,
                 tipo_pagamento: sale.tipo_pagamento,
-                cliente_id: sale.cliente_id && sale.cliente_id !== '' ? sale.cliente_id : null,
-                vendedor_id: sale.vendedor_id && sale.vendedor_id !== '1' && sale.vendedor_id !== 'manual' ? sale.vendedor_id : null,
+                cliente_id: isUUID(sale.cliente_id) ? sale.cliente_id : null,
+                vendedor_id: isUUID(sale.vendedor_id) ? sale.vendedor_id : null,
                 status: sale.status,
                 fiscal_status: sale.fiscal_status,
                 nfe_numero: sale.nfe_numero,
@@ -221,13 +224,14 @@ export const db = {
         async openSession(session: CashSession) {
             const payload: any = {
                 aberto_em: session.aberto_em,
-                valor_abertura: session.valor_abertura,
-                valor_fechamento_esperado: session.valor_fechamento_esperado,
+                valor_abertura: session.valor_abertura || 0,
+                valor_fechamento_esperado: session.valor_fechamento_esperado || 0,
                 status: session.status,
-                vendedor_id: session.vendedor_id && session.vendedor_id !== '1' ? session.vendedor_id : null
+                vendedor_id: isUUID(session.vendedor_id) ? session.vendedor_id : null
             };
-            const { error } = await supabase.from('caixa_sessoes').insert(payload);
+            const { data, error } = await supabase.from('caixa_sessoes').insert(payload).select().single();
             if (error) throw error;
+            return data as CashSession;
         },
         async updateSession(id: string, data: Partial<CashSession>) {
             const { error } = await supabase.from('caixa_sessoes').update(data).eq('id', id);
@@ -235,9 +239,9 @@ export const db = {
         },
         async addTransaction(transaction: CashTransaction) {
             const payload = {
-                caixa_id: transaction.caixa_id,
+                caixa_id: isUUID(transaction.caixa_id) ? transaction.caixa_id : null,
                 tipo: transaction.tipo,
-                valor: transaction.valor,
+                valor: transaction.valor || 0,
                 motivo: transaction.motivo,
                 data: transaction.data
             };
