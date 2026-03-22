@@ -119,7 +119,7 @@ const Employees: React.FC<EmployeesProps> = ({ onNotify, currentUser }) => {
     };
 
     try {
-      await db.employees.save(empData, !!editingEmp);
+      await db.employees.save(empData);
       onNotify(`✅ Funcionário ${editingEmp ? 'atualizado' : 'cadastrado'}!`, 'success');
       setIsModalOpen(false);
       loadEmployees();
@@ -139,8 +139,7 @@ const Employees: React.FC<EmployeesProps> = ({ onNotify, currentUser }) => {
     }
     setLoading(true);
     try {
-      const { error } = await db.supabase.from('funcionarios').delete().eq('id', empToDelete.id);
-      if (error) throw error;
+      await db.employees.delete(empToDelete.id);
       onNotify('🗑️ Colaborador desligado com sucesso.', 'success');
       setIsDeleteModalOpen(false);
       setEmpToDelete(null);
@@ -159,7 +158,7 @@ const Employees: React.FC<EmployeesProps> = ({ onNotify, currentUser }) => {
     }
     const newStatus = emp.status === 'Ativo' ? 'Inativo' : 'Ativo';
     try {
-      await db.employees.save({ ...emp, status: newStatus as any }, true);
+      await db.employees.save({ ...emp, status: newStatus as any });
       onNotify('Status atualizado!', 'success');
       loadEmployees();
     } catch (err) {

@@ -162,7 +162,7 @@ const Products: React.FC<ProductsProps> = ({ onNotify, currentUser }) => {
     };
 
     try {
-      await db.products.save(productData, !!editingProduct);
+      await db.products.save(productData);
       onNotify(`✅ Produto ${editingProduct ? 'atualizado' : 'cadastrado'} com sucesso!`, 'success');
       setIsModalOpen(false);
       loadProducts();

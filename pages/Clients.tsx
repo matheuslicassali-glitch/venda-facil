@@ -142,7 +142,7 @@ const Clients: React.FC<ClientsProps> = ({ onNotify, currentUser }) => {
         };
 
         try {
-            await db.clients.save(clientData, !!editingClient);
+            await db.clients.save(clientData);
             onNotify(`✅ Cliente ${editingClient ? 'atualizado' : 'cadastrado'}!`, 'success');
             setIsModalOpen(false);
             loadClients();
@@ -161,8 +161,7 @@ const Clients: React.FC<ClientsProps> = ({ onNotify, currentUser }) => {
         }
         setLoading(true);
         try {
-            const { error } = await db.supabase.from('clientes').delete().eq('id', clientToDelete.id);
-            if (error) throw error;
+            await db.clients.delete(clientToDelete.id);
             onNotify('🗑️ Cliente removido.', 'success');
             setIsDeleteModalOpen(false);
             setClientToDelete(null);

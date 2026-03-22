@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 .env
 tmp/
+*.db
+backend/venda-facil
+backend/venda-facil.exe

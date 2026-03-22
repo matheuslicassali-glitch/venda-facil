@@ -63,18 +63,11 @@ const Invoices: React.FC<InvoicesProps> = ({ onNotify, currentUser }) => {
     }
     setLoading(true);
     try {
-      const { data: sale } = await db.supabase.from('vendas').select('*').eq('id', cancelingInvoice.id).single();
-      if (sale) {
-        await db.supabase.from('vendas').update({
-          status: 'cancelada',
-          fiscal_status: 'erro'
-        }).eq('id', cancelingInvoice.id);
-
-        onNotify('✅ Protocolo de cancelamento enviado com sucesso!', 'success');
-        setCancelingInvoice(null);
-        setJustification('');
-        loadSales();
-      }
+      await db.sales.cancel(cancelingInvoice.id);
+      onNotify('✅ Protocolo de cancelamento enviado com sucesso!', 'success');
+      setCancelingInvoice(null);
+      setJustification('');
+      loadSales();
     } catch (err) {
       onNotify('❌ Erro no processamento do cancelamento.', 'error');
     } finally {
