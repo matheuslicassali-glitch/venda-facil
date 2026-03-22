@@ -19,7 +19,7 @@ func ConectarBanco() {
 
 	if dsn == "" {
 		fmt.Println("DATABASE_URL não configurada. Usando SQLite local (teste_local.db) para este teste...")
-		DB, err = gorm.Open(sqlite.Open("teste_local.db"), &gorm.Config{
+		DB, err = gorm.Open(sqlite.Open("teste_local.db?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)"), &gorm.Config{
 			Logger: logger.Default.LogMode(logger.Info),
 		})
 	} else {
@@ -32,9 +32,24 @@ func ConectarBanco() {
 		log.Fatal("Falha ao inicializar o banco de dados: ", err)
 	}
 
-	// Sincronizar tabelas (AutoMigrate) para o teste local se estiver usando SQLite
+	// Sincronizar tabelas (AutoMigrate) com tratamento de erro explícito
 	if dsn == "" {
-		DB.AutoMigrate(&Produto{}, &Cliente{}, &Funcionario{}, &Venda{}, &ItemVenda{}, &SessaoCaixa{}, &MovimentacaoCaixa{}, &ContaFinanceira{}, &Fornecedor{})
+		err = DB.AutoMigrate(
+			&Produto{}, 
+			&Cliente{}, 
+			&Funcionario{}, 
+			&Venda{}, 
+			&ItemVenda{}, 
+			&SessaoCaixa{}, 
+			&MovimentacaoCaixa{}, 
+			&ContaFinanceira{}, 
+			&Fornecedor{},
+		)
+		if err != nil {
+			log.Fatal("Erro na migração automática das tabelas Go: ", err)
+		}
+		
+		fmt.Println("Migração de tabelas local concluída com sucesso!")
 		
 		// Criar dados iniciais para o teste local se estiver vazio
 		var count int64
@@ -50,6 +65,8 @@ func ConectarBanco() {
 func sPtr(s string) *string { return &s }
 
 func seedInitialData() {
+	fmt.Println("Semeando dados de exemplo no banco local...")
+	
 	// Exemplo de dados para o seu teste local agora mesmo
 	produtoExemplo := Produto{
 		Nome: "Arroz 5kg",
@@ -63,7 +80,9 @@ func seedInitialData() {
 		CFOP: "5102",
 		CST_CSOSN: "102",
 	}
-	DB.Create(&produtoExemplo)
+	if err := DB.Create(&produtoExemplo).Error; err != nil {
+		fmt.Println("Erro ao semear produto:", err)
+	}
 	
 	clienteExemplo := Cliente{
 		Nome: "Lukas Teste Local",
@@ -72,7 +91,9 @@ func seedInitialData() {
 		Cidade: sPtr("São Paulo"),
 		UF: sPtr("SP"),
 	}
-	DB.Create(&clienteExemplo)
+	if err := DB.Create(&clienteExemplo).Error; err != nil {
+		fmt.Println("Erro ao semear cliente:", err)
+	}
 	
 	fmt.Println("--- Dados de exemplo semeados no banco local para o seu teste! ---")
 }
