@@ -66,6 +66,7 @@ export interface Sale {
   data_venda: string;
   valor_total: number;
   desconto_total: number;
+  acrescimo_total: number;
   itens: SaleItem[];
   tipo_pagamento: 'dinheiro' | 'cartao_credito' | 'cartao_debito' | 'pix' | 'fiado';
   cliente_id?: string;
@@ -171,7 +172,16 @@ export interface CompanySettings {
     certificado_pfx?: string; // Base64 or path
     certificado_senha?: string;
     certificado_nome?: string;
+    nfe_serie: number;
+    nfe_numero: number;
+    nfce_serie: number;
+    nfce_numero: number;
   };
+  serial_chave: string;
+  senha_master: string;
+  email_master: string;
+  status_licenca: 'ativo' | 'bloqueado';
+  validade_uso?: string;
 }
 
-export type View = 'login' | 'dashboard' | 'produtos' | 'pdv' | 'relatorios' | 'nfe' | 'fornecedores' | 'funcionarios' | 'estoque' | 'clientes' | 'caixa' | 'financeiro' | 'configuracoes' | 'venda_comum' | 'nfe_manual';
+export type View = 'login' | 'dashboard' | 'produtos' | 'pdv' | 'relatorios' | 'nfe' | 'fornecedores' | 'funcionarios' | 'estoque' | 'clientes' | 'caixa' | 'financeiro' | 'configuracoes' | 'venda_comum' | 'nfe_manual' | 'manual';

@@ -184,7 +184,7 @@ const Cashier: React.FC<CashierProps> = ({ onNotify, currentUser }) => {
         <div className="animate-in fade-in duration-500">
             <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800 tracking-tight">Fluxo de Caixa</h1>
+                    <h1 className="text-2xl font-bold text-foreground tracking-tight">Fluxo de Caixa</h1>
                     <p className="text-gray-600">Abertura, fechamento e movimentações financeiras</p>
                 </div>
                 {!session ? (
@@ -216,30 +216,30 @@ const Cashier: React.FC<CashierProps> = ({ onNotify, currentUser }) => {
 
             {session ? (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-                    <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Status Atual</p>
+                    <div className="bg-card text-card-foreground p-6 rounded-xl border border-border shadow-sm">
+                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Status Atual</p>
                         <div className="flex items-center gap-2 mb-4">
                             <span className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
-                            <h3 className="text-lg font-bold text-gray-800">CAIXA ABERTO</h3>
+                            <h3 className="text-lg font-bold text-foreground">CAIXA ABERTO</h3>
                         </div>
-                        <p className="text-xs text-gray-500">Iniciado em: {new Date(session.aberto_em).toLocaleString()}</p>
+                        <p className="text-xs text-muted-foreground">Iniciado em: {new Date(session.aberto_em).toLocaleString()}</p>
                     </div>
 
-                    <div className="bg-blue-600 p-6 rounded-xl shadow-lg text-white">
+                    <div className="bg-primary text-primary-foreground p-6 rounded-xl shadow-lg text-white">
                         <p className="text-[10px] font-black text-white/60 uppercase tracking-widest mb-1">Saldo em Caixa (Esperado)</p>
                         <h2 className="text-3xl font-black">{session.valor_fechamento_esperado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</h2>
                         <p className="text-xs text-white/80 mt-2">Abertura: {session.valor_abertura.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
                     </div>
 
-                    <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex flex-col justify-center">
+                    <div className="bg-card text-card-foreground p-6 rounded-xl border border-border shadow-sm flex flex-col justify-center">
                         <div className="flex justify-between items-center mb-2">
-                            <span className="text-xs font-bold text-gray-400 uppercase">Suprimentos</span>
+                            <span className="text-xs font-bold text-muted-foreground uppercase">Suprimentos</span>
                             <span className="text-sm font-bold text-green-600">
                                 +{transactions.filter(t => t.caixa_id === session.id && t.tipo === 'suprimento').reduce((a, b) => a + b.valor, 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                             </span>
                         </div>
                         <div className="flex justify-between items-center">
-                            <span className="text-xs font-bold text-gray-400 uppercase">Sangrias</span>
+                            <span className="text-xs font-bold text-muted-foreground uppercase">Sangrias</span>
                             <span className="text-sm font-bold text-red-600">
                                 -{transactions.filter(t => t.caixa_id === session.id && t.tipo === 'sangria').reduce((a, b) => a + b.valor, 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                             </span>
@@ -247,32 +247,32 @@ const Cashier: React.FC<CashierProps> = ({ onNotify, currentUser }) => {
                     </div>
                 </div>
             ) : (
-                <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl p-20 text-center">
+                <div className="bg-muted text-muted-foreground border-2 border-dashed border-border rounded-2xl p-20 text-center">
                     <Calculator size={48} className="mx-auto text-gray-300 mb-4" />
-                    <h3 className="text-xl font-bold text-gray-500">Caixa Fechado</h3>
-                    <p className="text-gray-400 max-w-sm mx-auto mt-2">Abra o caixa para iniciar as vendas do dia e registrar as movimentações financeiras.</p>
+                    <h3 className="text-xl font-bold text-muted-foreground">Caixa Fechado</h3>
+                    <p className="text-muted-foreground max-w-sm mx-auto mt-2">Abra o caixa para iniciar as vendas do dia e registrar as movimentações financeiras.</p>
                 </div>
             )}
 
             {session && (
                 <div className="space-y-6">
-                    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden text-[10px] font-black uppercase tracking-widest text-gray-500">
-                        <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
-                            <span className="flex items-center gap-2 text-gray-800"><Calculator size={16} /> Resumo de Recebimentos (Sessão Atual)</span>
+                    <div className="bg-card text-card-foreground rounded-xl border border-border shadow-sm overflow-hidden text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                        <div className="p-4 border-b border-border bg-muted text-muted-foreground/50 flex items-center justify-between">
+                            <span className="flex items-center gap-2 text-foreground"><Calculator size={16} /> Resumo de Recebimentos (Sessão Atual)</span>
                             <span>{getSessionSales(session).length} Vendas</span>
                         </div>
                         <div className="p-6 grid grid-cols-2 lg:grid-cols-5 gap-4">
                             {[
                                 { label: 'Dinheiro', key: 'dinheiro', color: 'text-green-600' },
-                                { label: 'Crédito', key: 'cartao_credito', color: 'text-blue-600' },
+                                { label: 'Crédito', key: 'cartao_credito', color: 'text-primary' },
                                 { label: 'Débito', key: 'cartao_debito', color: 'text-indigo-600' },
                                 { label: 'PIX', key: 'pix', color: 'text-cyan-600' },
                                 { label: 'Fiado', key: 'fiado', color: 'text-orange-600' }
                             ].map(m => {
                                 const total = calculateSessionTotals(session)[m.key] || 0;
                                 return (
-                                    <div key={m.key} className="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                                        <p className="mb-1 text-gray-400">{m.label}</p>
+                                    <div key={m.key} className="bg-muted text-muted-foreground p-3 rounded-lg border border-border">
+                                        <p className="mb-1 text-muted-foreground">{m.label}</p>
                                         <p className={`text-sm font-black ${m.color}`}>{total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
                                     </div>
                                 );
@@ -280,15 +280,15 @@ const Cashier: React.FC<CashierProps> = ({ onNotify, currentUser }) => {
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                        <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex items-center gap-2">
-                            <History size={18} className="text-gray-400" />
-                            <h3 className="font-bold text-gray-800">Movimentações da Sessão</h3>
+                    <div className="bg-card text-card-foreground rounded-xl border border-border shadow-sm overflow-hidden">
+                        <div className="p-4 border-b border-border bg-muted text-muted-foreground/50 flex items-center gap-2">
+                            <History size={18} className="text-muted-foreground" />
+                            <h3 className="font-bold text-foreground">Movimentações da Sessão</h3>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-left">
                                 <thead>
-                                    <tr className="bg-gray-50 border-b border-gray-100 text-[10px] font-black text-gray-500 uppercase tracking-widest">
+                                    <tr className="bg-background text-foreground border-b border-border text-[10px] font-black text-muted-foreground uppercase tracking-widest">
                                         <th className="px-6 py-4">Horário</th>
                                         <th className="px-6 py-4">Tipo</th>
                                         <th className="px-6 py-4">Motivo / Descrição</th>
@@ -297,8 +297,8 @@ const Cashier: React.FC<CashierProps> = ({ onNotify, currentUser }) => {
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
                                     {transactions.filter(t => t.caixa_id === session.id).reverse().map((t) => (
-                                        <tr key={t.id} className="hover:bg-gray-50 transition-colors">
-                                            <td className="px-6 py-4 text-xs font-medium text-gray-500">{new Date(t.data).toLocaleTimeString()}</td>
+                                        <tr key={t.id} className="hover:bg-muted text-muted-foreground transition-colors">
+                                            <td className="px-6 py-4 text-xs font-medium text-muted-foreground">{new Date(t.data).toLocaleTimeString()}</td>
                                             <td className="px-6 py-4">
                                                 <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${t.tipo === 'sangria' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
                                                     {t.tipo}
@@ -312,7 +312,7 @@ const Cashier: React.FC<CashierProps> = ({ onNotify, currentUser }) => {
                                     ))}
                                     {transactions.filter(t => t.caixa_id === session.id).length === 0 && (
                                         <tr>
-                                            <td colSpan={4} className="py-10 text-center text-gray-400 text-sm italic">Nenhuma movimentação registrada.</td>
+                                            <td colSpan={4} className="py-10 text-center text-muted-foreground text-sm italic">Nenhuma movimentação registrada.</td>
                                         </tr>
                                     )}
                                 </tbody>
@@ -322,15 +322,15 @@ const Cashier: React.FC<CashierProps> = ({ onNotify, currentUser }) => {
                 </div>
             )}
 
-            <div className="mt-12 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mb-12">
-                <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex items-center gap-2">
-                    <History size={18} className="text-gray-400" />
-                    <h3 className="font-bold text-gray-800 uppercase text-xs tracking-widest">Histórico de Caixas Fechados</h3>
+            <div className="mt-12 bg-card text-card-foreground rounded-xl border border-border shadow-sm overflow-hidden mb-12">
+                <div className="p-4 border-b border-border bg-muted text-muted-foreground/50 flex items-center gap-2">
+                    <History size={18} className="text-muted-foreground" />
+                    <h3 className="font-bold text-foreground uppercase text-xs tracking-widest">Histórico de Caixas Fechados</h3>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
                         <thead>
-                            <tr className="bg-gray-50 border-b border-gray-100 text-[10px] font-black text-gray-500 uppercase tracking-widest">
+                            <tr className="bg-muted text-muted-foreground border-b border-border text-[10px] font-black text-muted-foreground uppercase tracking-widest">
                                 <th className="px-6 py-4">Abertura</th>
                                 <th className="px-6 py-4">Fechamento</th>
                                 <th className="px-6 py-4 text-right">Esperado</th>
@@ -343,7 +343,7 @@ const Cashier: React.FC<CashierProps> = ({ onNotify, currentUser }) => {
                             {history.map((h) => {
                                 const diff = (h.valor_fechamento_informado || 0) - h.valor_fechamento_esperado;
                                 return (
-                                    <tr key={h.id} className="hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => { setSelectedReport(h); setIsModalOpen('relatorio'); }}>
+                                    <tr key={h.id} className="hover:bg-muted text-muted-foreground transition-colors cursor-pointer" onClick={() => { setSelectedReport(h); setIsModalOpen('relatorio'); }}>
                                         <td className="px-6 py-4 text-xs text-gray-600">
                                             <p className="font-black">{new Date(h.aberto_em).toLocaleDateString()}</p>
                                             <p className="text-[10px]">{new Date(h.aberto_em).toLocaleTimeString()}</p>
@@ -360,14 +360,14 @@ const Cashier: React.FC<CashierProps> = ({ onNotify, currentUser }) => {
                                             {diff > 0 ? '+' : ''}{diff.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                         </td>
                                         <td className="px-6 py-4 text-center">
-                                            <button className="text-[10px] font-black text-blue-600 uppercase hover:underline">Ver Detalhes</button>
+                                            <button className="text-[10px] font-black text-primary uppercase hover:underline">Ver Detalhes</button>
                                         </td>
                                     </tr>
                                 );
                             })}
                             {history.length === 0 && (
                                 <tr>
-                                    <td colSpan={6} className="py-10 text-center text-gray-400 text-sm italic">Nenhum histórico encontrado.</td>
+                                    <td colSpan={6} className="py-10 text-center text-muted-foreground text-sm italic">Nenhum histórico encontrado.</td>
                                 </tr>
                             )}
                         </tbody>
@@ -380,7 +380,7 @@ const Cashier: React.FC<CashierProps> = ({ onNotify, currentUser }) => {
             <Modal isOpen={isModalOpen === 'abertura'} onClose={() => setIsModalOpen(null)} title="Abertura de Caixa">
                 <form onSubmit={handleOpenCash} className="space-y-4 pt-2">
                     <Input label="Valor Inicial em Caixa" type="number" step="0.01" placeholder="R$ 0,00" required value={formData.valor} onChange={e => setFormData({ ...formData, valor: e.target.value })} />
-                    <p className="text-xs text-gray-500 bg-blue-50 p-3 rounded-lg border border-blue-100">Informe o valor em dinheiro disponível na gaveta para troco no início do turno.</p>
+                    <p className="text-xs text-muted-foreground bg-blue-50 p-3 rounded-lg border border-blue-100">Informe o valor em dinheiro disponível na gaveta para troco no início do turno.</p>
                     <div className="flex justify-end gap-3 mt-8 pt-4 border-t">
                         <Button variant="ghost" type="button" onClick={() => setIsModalOpen(null)}>Cancelar</Button>
                         <Button type="submit">Confirmar Abertura</Button>
@@ -418,18 +418,18 @@ const Cashier: React.FC<CashierProps> = ({ onNotify, currentUser }) => {
                     return (
                         <div className="space-y-6 pt-2">
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                                    <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Início</p>
+                                <div className="p-4 bg-muted text-muted-foreground rounded-xl border border-border">
+                                    <p className="text-[10px] font-black text-muted-foreground uppercase mb-1">Início</p>
                                     <p className="text-sm font-bold text-gray-700">{new Date(selectedReport.aberto_em).toLocaleString()}</p>
                                 </div>
-                                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                                    <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Término</p>
+                                <div className="p-4 bg-muted text-muted-foreground rounded-xl border border-border">
+                                    <p className="text-[10px] font-black text-muted-foreground uppercase mb-1">Término</p>
                                     <p className="text-sm font-bold text-gray-700">{selectedReport.fechado_em ? new Date(selectedReport.fechado_em).toLocaleString() : 'Em curso'}</p>
                                 </div>
                             </div>
 
                             <div className="space-y-3">
-                                <h4 className="text-xs font-black text-gray-400 uppercase border-b pb-2">Vendas por Pagamento</h4>
+                                <h4 className="text-xs font-black text-muted-foreground uppercase border-b pb-2">Vendas por Pagamento</h4>
                                 {[
                                     { label: 'Dinheiro', key: 'dinheiro', icon: DollarSign },
                                     { label: 'Cartão de Crédito', key: 'cartao_credito', icon: CreditCard },
@@ -439,35 +439,35 @@ const Cashier: React.FC<CashierProps> = ({ onNotify, currentUser }) => {
                                 ].map(m => (
                                     <div key={m.key} className="flex justify-between items-center text-sm">
                                         <span className="text-gray-600 font-medium">{m.label}</span>
-                                        <span className="font-black text-gray-800">{(totals[m.key] || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                        <span className="font-black text-foreground">{(totals[m.key] || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                                     </div>
                                 ))}
                                 <div className="flex justify-between items-center pt-3 border-t text-lg">
-                                    <span className="font-black text-gray-800">Total de Vendas</span>
-                                    <span className="font-black text-blue-600">{totals.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                    <span className="font-black text-foreground">Total de Vendas</span>
+                                    <span className="font-black text-primary">{totals.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                                 </div>
                             </div>
 
                             <div className="space-y-3 pt-4 border-t-2 border-dashed">
                                 <div className="flex justify-between items-center text-sm">
-                                    <span className="text-gray-500">Abertura de Caixa</span>
+                                    <span className="text-muted-foreground">Abertura de Caixa</span>
                                     <span className="font-bold">+{selectedReport.valor_abertura.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                                 </div>
                                 <div className="flex justify-between items-center text-sm">
-                                    <span className="text-gray-500">Suprimentos (+)</span>
+                                    <span className="text-muted-foreground">Suprimentos (+)</span>
                                     <span className="font-bold text-green-600">+{totals.suprimentos.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                                 </div>
                                 <div className="flex justify-between items-center text-sm">
-                                    <span className="text-gray-500">Sangrias (-)</span>
+                                    <span className="text-muted-foreground">Sangrias (-)</span>
                                     <span className="font-bold text-red-600">-{totals.sangrias.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                                 </div>
                                 <div className="flex justify-between items-center pt-3 border-t text-xl">
-                                    <span className="font-black text-gray-800">Saldo Final Esperado</span>
-                                    <span className="font-black text-gray-800">{selectedReport.valor_fechamento_esperado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                    <span className="font-black text-foreground">Saldo Final Esperado</span>
+                                    <span className="font-black text-foreground">{selectedReport.valor_fechamento_esperado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                                 </div>
                                 <div className="flex justify-between items-center text-xl">
-                                    <span className="font-black text-gray-800">Saldo Final Informado</span>
-                                    <span className="font-black text-blue-600">{selectedReport.valor_fechamento_informado?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                    <span className="font-black text-foreground">Saldo Final Informado</span>
+                                    <span className="font-black text-primary">{selectedReport.valor_fechamento_informado?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                                 </div>
                                 {selectedReport.fechado_em && (
                                     <div className={`p-4 rounded-xl font-black text-center mt-4 ${((selectedReport.valor_fechamento_informado || 0) - selectedReport.valor_fechamento_esperado) === 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>

@@ -36,7 +36,11 @@ const Settings: React.FC<SettingsProps> = ({ onNotify, currentUser }) => {
         fiscal: {
             csc: '',
             csc_id: '',
-            ambiente: 'homologacao'
+            ambiente: 'homologacao',
+            nfe_serie: 1,
+            nfe_numero: 1,
+            nfce_serie: 1,
+            nfce_numero: 1
         }
     });
 
@@ -71,7 +75,11 @@ const Settings: React.FC<SettingsProps> = ({ onNotify, currentUser }) => {
                     fiscal: {
                         csc: data.fiscal_csc || '',
                         csc_id: data.fiscal_csc_id || '',
-                        ambiente: data.fiscal_ambiente || 'homologacao'
+                        ambiente: data.fiscal_ambiente || 'homologacao',
+                        nfe_serie: data.nfe_serie || 1,
+                        nfe_numero: data.nfe_numero || 1,
+                        nfce_serie: data.nfce_serie || 1,
+                        nfce_numero: data.nfce_numero || 1
                     }
                 });
             }
@@ -114,11 +122,20 @@ const Settings: React.FC<SettingsProps> = ({ onNotify, currentUser }) => {
             telefone_contato: settings.contato.telefone.replace(/\D/g, ''),
             fiscal_csc: settings.fiscal.csc,
             fiscal_csc_id: settings.fiscal.csc_id,
-            fiscal_ambiente: settings.fiscal.ambiente
+            fiscal_ambiente: settings.fiscal.ambiente,
+            nfe_serie: Number(settings.fiscal.nfe_serie),
+            nfe_numero: Number(settings.fiscal.nfe_numero),
+            nfce_serie: Number(settings.fiscal.nfce_serie),
+            nfce_numero: Number(settings.fiscal.nfce_numero),
+            serial_chave: settings.serial_chave,
+            senha_master: settings.senha_master,
+            email_master: settings.email_master,
+            status_licenca: settings.status_licenca,
+            validade_uso: settings.validade_uso
         };
 
         try {
-            await db.settings.update(dbData);
+            await db.settings.save(dbData);
             onNotify('✅ Configurações da matriz atualizadas!', 'success');
             loadSettings();
         } catch (err) {
@@ -130,13 +147,18 @@ const Settings: React.FC<SettingsProps> = ({ onNotify, currentUser }) => {
 
     return (
         <div className="animate-in fade-in duration-500 max-w-5xl space-y-10 pb-20">
-            <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-card text-card-foreground p-6 rounded-3xl border border-border shadow-sm mb-8">
                 <div>
-                    <h1 className="text-2xl font-black text-gray-800 tracking-tight">Configurações Base</h1>
-                    <p className="text-gray-600 font-medium">Dados do emitente e integração fiscal SEFAZ</p>
+                    <div className="flex items-center gap-2 mb-1">
+                       <div className="w-8 h-8 bg-slate-900 text-white rounded-lg flex items-center justify-center shadow-lg shadow-slate-200">
+                          <SettingsIcon size={18} />
+                       </div>
+                       <h1 className="text-2xl font-black text-foreground tracking-tight">Configurações Base</h1>
+                    </div>
+                    <p className="text-muted-foreground font-bold text-sm italic">Configurações Gerais - <span className="text-primary">v2.0.3 Stable</span></p>
                 </div>
                 {isSuperAdmin && (
-                    <Button onClick={handleSave} disabled={loading} className="bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-500/20 px-10">
+                    <Button onClick={handleSave} disabled={loading} className="h-12 px-10 rounded-2xl bg-indigo-600 text-white font-black text-[10px] uppercase shadow-xl shadow-indigo-200 hover:bg-indigo-700 transition-all">
                         {loading ? 'Sincronizando...' : 'Salvar Alterações'}
                     </Button>
                 )}
@@ -151,10 +173,11 @@ const Settings: React.FC<SettingsProps> = ({ onNotify, currentUser }) => {
                 </div>
             )}
 
+
             <form onSubmit={handleSave} className={`space-y-10 ${!isSuperAdmin ? 'opacity-70 pointer-events-none grayscale-[0.5]' : ''}`}>
                 {/* Identidade Jurídica */}
-                <section className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div className="p-5 border-b border-gray-100 bg-gray-50/50 flex items-center gap-3">
+                <section className="bg-card text-card-foreground rounded-3xl shadow-sm border border-border overflow-hidden">
+                    <div className="p-5 border-b border-border bg-muted text-muted-foreground/50 flex items-center gap-3">
                         <Building2 className="text-indigo-600" size={20} />
                         <h2 className="font-black text-gray-700 uppercase tracking-widest text-[10px]">Identidade Jurídica e Fiscal</h2>
                     </div>
@@ -168,7 +191,7 @@ const Settings: React.FC<SettingsProps> = ({ onNotify, currentUser }) => {
                             <Input label="Inscrição Estadual" placeholder="Apenas números ou ISENTO" required value={settings.inscricao_estadual} onChange={e => setSettings({ ...settings, inscricao_estadual: e.target.value })} />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Regime Tributário (CRT)</label>
+                            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Regime Tributário (CRT)</label>
                             <div className="grid grid-cols-3 gap-3">
                                 {[
                                     { id: '1', label: 'Simples Nacional' },
@@ -179,7 +202,7 @@ const Settings: React.FC<SettingsProps> = ({ onNotify, currentUser }) => {
                                         key={crt.id}
                                         type="button"
                                         onClick={() => setSettings({ ...settings, crt: crt.id as any })}
-                                        className={`p-4 rounded-2xl border-2 font-black text-[10px] uppercase tracking-widest transition-all ${settings.crt === crt.id ? 'bg-indigo-50 border-indigo-500 text-indigo-700 shadow-inner' : 'bg-white border-gray-100 text-gray-400 hover:border-gray-200'}`}
+                                        className={`p-4 rounded-2xl border-2 font-black text-[10px] uppercase tracking-widest transition-all ${settings.crt === crt.id ? 'bg-indigo-50 border-indigo-500 text-indigo-700 shadow-inner' : 'bg-card text-card-foreground border-border text-muted-foreground hover:border-border'}`}
                                     >
                                         {crt.label}
                                     </button>
@@ -190,8 +213,8 @@ const Settings: React.FC<SettingsProps> = ({ onNotify, currentUser }) => {
                 </section>
 
                 {/* Localização e Logística */}
-                <section className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div className="p-5 border-b border-gray-100 bg-gray-50/50 flex items-center gap-3">
+                <section className="bg-card text-card-foreground rounded-3xl shadow-sm border border-border overflow-hidden">
+                    <div className="p-5 border-b border-border bg-muted text-muted-foreground/50 flex items-center gap-3">
                         <MapPin className="text-orange-600" size={20} />
                         <h2 className="font-black text-gray-700 uppercase tracking-widest text-[10px]">Endereço Fiscal e Contatos</h2>
                     </div>
@@ -214,9 +237,9 @@ const Settings: React.FC<SettingsProps> = ({ onNotify, currentUser }) => {
                         </div>
                         <div className="grid grid-cols-3 gap-6">
                              <div className="space-y-2">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">UF / Estado</label>
+                                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">UF / Estado</label>
                                 <select 
-                                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    className="w-full px-4 py-2.5 bg-muted text-muted-foreground border border-border rounded-xl font-bold text-gray-700 focus:outline-none focus:ring-2 focus:ring-ring"
                                     value={settings.endereco.uf} 
                                     onChange={e => setSettings({ ...settings, endereco: { ...settings.endereco, uf: e.target.value } })}
                                 >
@@ -233,8 +256,8 @@ const Settings: React.FC<SettingsProps> = ({ onNotify, currentUser }) => {
                 </section>
 
                 {/* Parâmetros Fiscais SEFAZ */}
-                <section className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div className="p-5 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+                <section className="bg-card text-card-foreground rounded-3xl shadow-sm border border-border overflow-hidden">
+                    <div className="p-5 border-b border-border bg-muted text-muted-foreground/50 flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <ShieldCheck className="text-emerald-600" size={20} />
                             <h2 className="font-black text-gray-700 uppercase tracking-widest text-[10px]">Configuração NFC-e / NF-e</h2>
@@ -245,7 +268,7 @@ const Settings: React.FC<SettingsProps> = ({ onNotify, currentUser }) => {
                                         key={env}
                                         type="button"
                                         onClick={() => setSettings({ ...settings, fiscal: { ...settings.fiscal, ambiente: env } })}
-                                        className={`px-6 py-2 text-[9px] font-black uppercase tracking-widest rounded-xl transition-all ${settings.fiscal.ambiente === env ? (env === 'producao' ? 'bg-red-600 text-white shadow-lg' : 'bg-white text-emerald-600 shadow-md') : 'text-gray-400 hover:text-gray-600'}`}
+                                        className={`px-6 py-2 text-[9px] font-black uppercase tracking-widest rounded-xl transition-all ${settings.fiscal.ambiente === env ? (env === 'producao' ? 'bg-red-600 text-white shadow-lg' : 'bg-card text-card-foreground text-emerald-600 shadow-md') : 'text-muted-foreground hover:text-gray-600'}`}
                                     >
                                         {env}
                                     </button>
@@ -265,16 +288,93 @@ const Settings: React.FC<SettingsProps> = ({ onNotify, currentUser }) => {
                                 <Input label="Identificador CSC (Número)" placeholder="Ex: 000001" value={settings.fiscal.csc_id} onChange={e => setSettings({ ...settings, fiscal: { ...settings.fiscal, csc_id: e.target.value } })} />
                                 <Input label="Token/Chave CSC" placeholder="Ex: A5S8-D7F4-..." value={settings.fiscal.csc} onChange={e => setSettings({ ...settings, fiscal: { ...settings.fiscal, csc: e.target.value } })} />
                             </div>
-                            <div className="bg-gray-50 p-6 rounded-3xl border border-gray-100 flex flex-col items-center justify-center text-center space-y-4">
-                                <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center text-gray-300">
+                            <div className="space-y-6">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <Input label="NFe Atual Nº" type="number" value={settings.fiscal.nfe_numero} onChange={e => setSettings({ ...settings, fiscal: { ...settings.fiscal, nfe_numero: Number(e.target.value) } })} />
+                                    <Input label="NFe Série" type="number" value={settings.fiscal.nfe_serie} onChange={e => setSettings({ ...settings, fiscal: { ...settings.fiscal, nfe_serie: Number(e.target.value) } })} />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <Input label="NFCe Atual Nº" type="number" value={settings.fiscal.nfce_numero} onChange={e => setSettings({ ...settings, fiscal: { ...settings.fiscal, nfce_numero: Number(e.target.value) } })} />
+                                    <Input label="NFCe Série" type="number" value={settings.fiscal.nfce_serie} onChange={e => setSettings({ ...settings, fiscal: { ...settings.fiscal, nfce_serie: Number(e.target.value) } })} />
+                                </div>
+                            </div>
+                        </div>
+                        <div className="mt-8 bg-muted text-muted-foreground p-6 rounded-3xl border border-border flex flex-col md:flex-row items-center justify-between gap-6">
+                            <div className="flex items-center gap-4">
+                                <div className="w-16 h-16 bg-card text-card-foreground rounded-2xl shadow-sm flex items-center justify-center text-gray-300">
                                     <CreditCard size={32} />
                                 </div>
                                 <div>
                                     <p className="font-black text-[10px] text-gray-600 uppercase tracking-widest">Certificado Digital</p>
-                                    <p className="text-xs text-gray-400 mt-1 max-w-[200px]">A integração com certificado A1 é configurada via módulo servidor.</p>
+                                    <p className="text-xs text-muted-foreground mt-1 max-w-[250px]">A integração com certificado A1 é configurada via módulo servidor.</p>
                                 </div>
-                                <Button variant="ghost" className="border border-gray-200 text-[10px] font-black uppercase tracking-widest">Fazer Upload .PFX</Button>
                             </div>
+                            <Button variant="ghost" type="button" className="border border-border text-[10px] font-black uppercase tracking-widest whitespace-nowrap">Fazer Upload .PFX</Button>
+                        </div>
+                    </div>
+                </section>
+                {/* Controle de Segurança e Licenciamento */}
+                <section className="bg-card text-card-foreground rounded-3xl shadow-sm border border-border overflow-hidden">
+                    <div className="p-5 border-b border-border bg-muted text-muted-foreground/50 flex items-center gap-3">
+                        <Lock className="text-red-600" size={20} />
+                        <h2 className="font-black text-gray-700 uppercase tracking-widest text-[10px]">Segurança e Licenciamento Master</h2>
+                    </div>
+                    <div className="p-8 space-y-6">
+                        <div className="grid grid-cols-2 gap-8">
+                            <div className="space-y-6">
+                                <Input label="E-mail Master (Recuperação/Bloqueio)" type="email" placeholder="admin@sistema.com" value={settings.email_master} onChange={e => setSettings({ ...settings, email_master: e.target.value })} />
+                                <Input label="Senha Master (Controle de Validade)" type="password" placeholder="••••••••" value={settings.senha_master} onChange={e => setSettings({ ...settings, senha_master: e.target.value })} />
+                            </div>
+                            <div className="space-y-6">
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Serial / Chave do Sistema</label>
+                                    <div className="flex gap-2">
+                                        <div className="relative flex-1">
+                                            <Input 
+                                                placeholder="XXXX-XXXX-XXXX-XXXX" 
+                                                className="pr-16"
+                                                value={settings.serial_chave} 
+                                                onChange={e => setSettings({ ...settings, serial_chave: e.target.value })} 
+                                            />
+                                        </div>
+                                        <Button 
+                                            type="button" 
+                                            variant="secondary" 
+                                            className="h-10 px-4 text-[10px] font-black uppercase tracking-widest bg-blue-50 text-primary border-none"
+                                            onClick={async () => {
+                                                try {
+                                                    const text = await navigator.clipboard.readText();
+                                                    setSettings({ ...settings, serial_chave: text });
+                                                    onNotify('📋 Serial colado!', 'success');
+                                                } catch (err) {
+                                                    onNotify('❌ Falha ao acessar área de transferência.', 'error');
+                                                }
+                                            }}
+                                        >
+                                            Colar
+                                        </Button>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Status da Licença</label>
+                                        <select 
+                                            className="w-full px-4 py-2.5 bg-muted text-muted-foreground border border-border rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-ring"
+                                            value={settings.status_licenca}
+                                            onChange={e => setSettings({ ...settings, status_licenca: e.target.value as any })}
+                                        >
+                                            <option value="ativo">ATIVO</option>
+                                            <option value="bloqueado">BLOQUEADO</option>
+                                        </select>
+                                    </div>
+                                    <Input label="Validade de Uso" type="date" value={settings.validade_uso?.split('T')[0] || ''} onChange={e => setSettings({ ...settings, validade_uso: e.target.value ? new Date(e.target.value).toISOString() : '' })} />
+                                </div>
+                            </div>
+                        </div>
+                        <div className="p-4 bg-red-50 border border-red-100 rounded-2xl">
+                             <p className="text-[10px] font-bold text-red-700 uppercase leading-relaxed">
+                                ⚠️ ATENÇÃO: A Senha Master e o E-mail Master são as únicas chaves para desbloquear o sistema caso ele seja bloqueado por validade ou manualmente. Guarde-os com segurança.
+                             </p>
                         </div>
                     </div>
                 </section>

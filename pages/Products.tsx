@@ -7,6 +7,7 @@ import { Modal } from '../components/ui/Modal';
 import { Product, Permission } from '../types';
 import { db } from '../utils/databaseService';
 import { validateNCM } from '../utils/validation';
+import { printReport, fmtCurPrint } from '../utils/printUtils';
 
 interface ProductsProps {
   onNotify: (message: string, type: 'success' | 'error') => void;
@@ -21,6 +22,7 @@ const Products: React.FC<ProductsProps> = ({ onNotify, currentUser }) => {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
 
   const [formData, setFormData] = useState({
     nome: '',
@@ -193,37 +195,129 @@ const Products: React.FC<ProductsProps> = ({ onNotify, currentUser }) => {
     }
   };
 
+  const handleBatchDelete = async () => {
+    if (selectedProducts.length === 0) return;
+    if (isVendedor) {
+      onNotify('❌ Vendedores não têm permissão para excluir produtos.', 'error');
+      return;
+    }
+    if (!confirm(`Deseja realmente excluir ${selectedProducts.length} produtos selecionados?`)) return;
+
+    setLoading(true);
+    try {
+      for (const id of selectedProducts) {
+        await db.products.delete(id);
+      }
+      onNotify(`🗑️ ${selectedProducts.length} produtos removidos com sucesso!`, 'success');
+      setSelectedProducts([]);
+      loadProducts();
+    } catch (err) {
+      onNotify('❌ Erro ao remover produtos em lote.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePrintProducts = () => {
+    const rows = filteredProducts.map(p => `
+      <tr>
+        <td>${p.nome}</td>
+        <td>${p.sku}</td>
+        <td>${p.categoria}</td>
+        <td class="text-right">${fmtCurPrint(p.preco_custo)}</td>
+        <td class="text-right">${fmtCurPrint(p.preco_venda)}</td>
+        <td class="text-center">${p.estoque_atual} ${p.unidade}</td>
+        <td class="text-center">${p.ncm}</td>
+      </tr>
+    `).join('');
+
+    const body = `
+      <div class="kpi-grid">
+        <div class="kpi-card"><div class="kpi-label">Total Produtos</div><div class="kpi-value">${products.length}</div></div>
+        <div class="kpi-card"><div class="kpi-label">Estoque Baixo</div><div class="kpi-value">${products.filter(p => p.estoque_atual < (p.estoque_minimo || 5)).length}</div></div>
+      </div>
+      <div class="section-title">Catalogo de Produtos</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>SKU</th>
+            <th>Categoria</th>
+            <th class="text-right">Custo</th>
+            <th class="text-right">Venda</th>
+            <th class="text-center">Qtd</th>
+            <th class="text-center">NCM</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+    printReport('Catálogo de Produtos', body);
+  };
+
   const filteredProducts = products.filter(p =>
     p.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
     p.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
     p.codigo_barras?.includes(searchTerm)
   );
 
+  const toggleSelectAll = () => {
+    if (selectedProducts.length === filteredProducts.length) {
+      setSelectedProducts([]);
+    } else {
+      setSelectedProducts(filteredProducts.map(p => p.id));
+    }
+  };
+
+  const toggleSelectProduct = (id: string) => {
+    if (selectedProducts.includes(id)) {
+      setSelectedProducts(selectedProducts.filter(pid => pid !== id));
+    } else {
+      setSelectedProducts([...selectedProducts, id]);
+    }
+  };
+
   return (
     <div className="animate-in fade-in duration-500">
-      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 bg-card text-card-foreground p-6 rounded-3xl border border-border shadow-sm">
         <div>
-          <h1 className="text-2xl font-black text-gray-800 tracking-tight">Produtos</h1>
-          <p className="text-gray-600 font-medium">Catálogo completo de mercadorias e insumos</p>
+          <div className="flex items-center gap-2 mb-1">
+             <div className="w-8 h-8 bg-primary text-primary-foreground rounded-lg flex items-center justify-center shadow-lg shadow-blue-200">
+                <Package size={18} />
+             </div>
+             <h1 className="text-2xl font-black text-foreground tracking-tight">Produtos & Estoque</h1>
+          </div>
+          <p className="text-muted-foreground font-medium text-sm">Controle completo do seu catálogo e níveis de mercadoria</p>
         </div>
-        {!isVendedor && (
-            <Button onClick={() => handleOpenModal()} className="shadow-lg shadow-blue-500/20">
-            <Plus size={20} />
-            <span>Novo Produto</span>
+        <div className="flex gap-3">
+          {selectedProducts.length > 0 && !isVendedor && (
+            <Button variant="danger" onClick={handleBatchDelete} className="h-12 px-6 rounded-2xl font-black text-[10px] uppercase shadow-xl animate-in-fade">
+              <Trash2 size={18} />
+              <span>Excluir Selecionados ({selectedProducts.length})</span>
             </Button>
-        )}
+          )}
+          <Button variant="ghost" onClick={handlePrintProducts} className="border-border text-slate-600 h-12 px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-background text-foreground">
+             🖨️ Relatório Geral
+          </Button>
+          {!isVendedor && (
+              <Button onClick={() => handleOpenModal()} className="h-12 px-8 rounded-2xl bg-primary text-primary-foreground font-black text-[10px] uppercase shadow-xl shadow-blue-200 hover:bg-primary/90 transition-all">
+              <Plus size={18} />
+              <span>Novo Produto</span>
+              </Button>
+          )}
+        </div>
       </header>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-4 border-b border-gray-100 bg-gray-50/50">
+      <div className="bg-card text-card-foreground rounded-2xl shadow-sm border border-border overflow-hidden">
+        <div className="p-4 border-b border-border bg-muted text-muted-foreground/50">
           <div className="relative max-w-sm">
-            <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+            <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-muted-foreground">
               <Search size={18} />
             </span>
             <input
               type="text"
               placeholder="Buscar por nome, SKU ou barras..."
-              className="pl-10 w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-bold text-gray-700"
+              className="pl-10 w-full px-4 py-2.5 bg-card text-card-foreground border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-ring transition-all font-bold text-gray-700"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -233,28 +327,44 @@ const Products: React.FC<ProductsProps> = ({ onNotify, currentUser }) => {
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className="bg-gray-50 border-b border-gray-100 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                <th className="px-6 py-4">Informações do Produto</th>
-                <th className="px-6 py-4">Valores (Custo/Venda)</th>
-                <th className="px-6 py-4">Estoque</th>
-                <th className="px-6 py-4">Validade / NCM</th>
-                <th className="px-6 py-4 text-right">Ações</th>
+              <tr className="bg-background text-foreground border-b border-border text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+                <th className="px-6 py-5 w-10">
+                  <input 
+                    type="checkbox" 
+                    className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                    checked={selectedProducts.length === filteredProducts.length && filteredProducts.length > 0}
+                    onChange={toggleSelectAll}
+                  />
+                </th>
+                <th className="px-6 py-5">Informações do Produto</th>
+                <th className="px-6 py-5">Valores (Custo/Venda)</th>
+                <th className="px-6 py-5 text-center">Estoque Atual</th>
+                <th className="px-6 py-5">Classificação Fiscal</th>
+                <th className="px-6 py-5 text-right">Gerenciamento</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filteredProducts.map((p) => (
-                <tr key={p.id} className="hover:bg-gray-50 transition-colors group">
+                <tr key={p.id} className={`hover:bg-muted text-muted-foreground transition-colors group ${selectedProducts.includes(p.id) ? 'bg-primary/5' : ''}`}>
+                  <td className="px-6 py-4">
+                    <input 
+                      type="checkbox" 
+                      className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                      checked={selectedProducts.includes(p.id)}
+                      onChange={() => toggleSelectProduct(p.id)}
+                    />
+                  </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center font-black overflow-hidden shadow-inner">
+                      <div className="w-10 h-10 bg-blue-100 text-primary rounded-xl flex items-center justify-center font-black overflow-hidden shadow-inner">
                         {p.foto ? <img src={p.foto} alt="" className="w-full h-full object-cover" /> : <Package size={20} />}
                       </div>
                       <div>
-                        <p className="font-bold text-gray-800">{p.nome}</p>
+                        <p className="font-bold text-foreground">{p.nome}</p>
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] text-gray-400 font-black uppercase tracking-tighter bg-gray-100 px-1 rounded">SKU: {p.sku}</span>
+                          <span className="text-[10px] text-muted-foreground font-black uppercase tracking-tighter bg-gray-100 px-1 rounded">SKU: {p.sku}</span>
                           {p.codigo_barras && (
-                            <span className="flex items-center gap-0.5 text-[10px] text-gray-400 font-black uppercase tracking-tighter border-l pl-2">
+                            <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground font-black uppercase tracking-tighter border-l pl-2">
                               <Barcode size={10} /> {p.codigo_barras}
                             </span>
                           )}
@@ -264,8 +374,8 @@ const Products: React.FC<ProductsProps> = ({ onNotify, currentUser }) => {
                   </td>
                   <td className="px-6 py-4">
                     <div className="space-y-0.5">
-                      <p className="text-[10px] text-gray-400 font-black uppercase">Custo: {p.preco_custo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
-                      <p className="font-black text-gray-800 text-base">{p.preco_venda.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                      <p className="text-[10px] text-muted-foreground font-black uppercase">Custo: {p.preco_custo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                      <p className="font-black text-foreground text-base">{p.preco_venda.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -285,7 +395,7 @@ const Products: React.FC<ProductsProps> = ({ onNotify, currentUser }) => {
                   <td className="px-6 py-4">
                     <div className="space-y-1">
                         <span className="text-[10px] font-black p-1 bg-orange-50 text-orange-600 rounded uppercase">NCM: {p.ncm}</span>
-                        <div className="flex items-center gap-1 text-[10px] font-bold text-gray-400">
+                        <div className="flex items-center gap-1 text-[10px] font-bold text-muted-foreground">
                              <Calendar size={12} /> {p.validade || 'S/ VALIDADE'}
                         </div>
                     </div>
@@ -293,7 +403,7 @@ const Products: React.FC<ProductsProps> = ({ onNotify, currentUser }) => {
                   <td className="px-6 py-4 text-right space-x-1">
                     <button
                       onClick={() => handleOpenModal(p)}
-                      className="p-2 text-gray-400 hover:text-blue-600 transition-colors rounded-lg hover:bg-blue-50"
+                      className="p-2 text-muted-foreground hover:text-primary transition-colors rounded-lg hover:bg-blue-50"
                       title="Editar"
                     >
                       <Edit size={18} />
@@ -301,7 +411,7 @@ const Products: React.FC<ProductsProps> = ({ onNotify, currentUser }) => {
                     {!isVendedor && (
                         <button
                         onClick={() => { setProductToDelete(p); setIsDeleteModalOpen(true); }}
-                        className="p-2 text-gray-400 hover:text-red-600 transition-colors rounded-lg hover:bg-red-50"
+                        className="p-2 text-muted-foreground hover:text-red-600 transition-colors rounded-lg hover:bg-red-50"
                         title="Excluir"
                         >
                         <Trash2 size={18} />
@@ -312,7 +422,7 @@ const Products: React.FC<ProductsProps> = ({ onNotify, currentUser }) => {
               ))}
               {filteredProducts.length === 0 && (
                   <tr>
-                      <td colSpan={5} className="py-20 text-center">
+                      <td colSpan={6} className="py-20 text-center">
                           <Package size={48} className="mx-auto text-gray-200 mb-4" />
                           <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">Nenhum produto cadastrado</p>
                       </td>
@@ -327,8 +437,8 @@ const Products: React.FC<ProductsProps> = ({ onNotify, currentUser }) => {
         <form onSubmit={handleSaveProduct} className="space-y-8 max-h-[75vh] overflow-y-auto px-1 custom-scrollbar">
           <div className="space-y-5">
             <div className="flex items-center gap-2 border-b-2 border-blue-100 pb-2">
-                <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><PackageCheck size={20} /></div>
-                <h3 className="text-xs font-black text-gray-800 uppercase tracking-widest">Geral e Identificação</h3>
+                <div className="p-2 bg-blue-50 text-primary rounded-lg"><PackageCheck size={20} /></div>
+                <h3 className="text-xs font-black text-foreground uppercase tracking-widest">Geral e Identificação</h3>
             </div>
             
             <Input label="Nome Comercial do Produto" placeholder="Ex: Arroz Agulhinha 5kg" required maxLength={100} value={formData.nome} onChange={e => setFormData({ ...formData, nome: e.target.value })} />
@@ -369,9 +479,9 @@ const Products: React.FC<ProductsProps> = ({ onNotify, currentUser }) => {
               <Input label="Qtd. Inicial" type="number" placeholder="0" required value={formData.estoque_atual} onChange={e => setFormData({ ...formData, estoque_atual: e.target.value })} />
               <Input label="Qtd. Mínima" type="number" placeholder="5" value={formData.estoque_minimo} onChange={e => setFormData({ ...formData, estoque_minimo: e.target.value })} />
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Unidade</label>
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Unidade</label>
                 <select
-                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold text-gray-700"
+                  className="w-full px-4 py-2.5 bg-muted text-muted-foreground border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-ring font-bold text-gray-700"
                   value={formData.unidade}
                   onChange={e => setFormData({ ...formData, unidade: e.target.value })}
                 >
@@ -395,22 +505,22 @@ const Products: React.FC<ProductsProps> = ({ onNotify, currentUser }) => {
           <div className="space-y-5">
             <div className="flex items-center gap-2 border-b-2 border-orange-100 pb-2">
                 <div className="p-2 bg-orange-50 text-orange-600 rounded-lg"><AlertCircle size={20} /></div>
-                <h3 className="text-xs font-black text-gray-800 uppercase tracking-widest">Classificação Fiscal (NFe/SEFAZ)</h3>
+                <h3 className="text-xs font-black text-foreground uppercase tracking-widest">Classificação Fiscal (NFe/SEFAZ)</h3>
             </div>
             
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <Input label="NCM (Obrigatório - 8 dígitos)" placeholder="Ex: 22021000" required maxLength={8} value={formData.ncm} onChange={e => setFormData({ ...formData, ncm: e.target.value.replace(/\D/g, '') })} />
-                <p className="text-[9px] font-bold text-gray-400 uppercase px-1">Classificação Comum do Mercocul</p>
+                <p className="text-[9px] font-bold text-muted-foreground uppercase px-1">Classificação Comum do Mercocul</p>
               </div>
               <Input label="CEST (Opcional)" placeholder="Código Substituição" maxLength={7} value={formData.cest} onChange={e => setFormData({ ...formData, cest: e.target.value.replace(/\D/g, '') })} />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Origem do Produto</label>
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Origem do Produto</label>
                 <select
-                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold text-gray-700 text-xs"
+                  className="w-full px-4 py-2.5 bg-muted text-muted-foreground border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-ring font-bold text-gray-700 text-xs"
                   value={formData.origem}
                   onChange={e => setFormData({ ...formData, origem: e.target.value })}
                 >
@@ -428,23 +538,23 @@ const Products: React.FC<ProductsProps> = ({ onNotify, currentUser }) => {
               <Input label="Alíquota ICMS (%)" type="number" step="0.01" value={formData.icms_aliquota} onChange={e => setFormData({ ...formData, icms_aliquota: e.target.value })} />
             </div>
 
-            <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+            <div className="grid grid-cols-2 gap-4 p-4 bg-muted text-muted-foreground rounded-2xl border border-border">
               <div className="space-y-3">
-                <p className="text-[10px] font-black text-gray-400 underline">PIS</p>
+                <p className="text-[10px] font-black text-muted-foreground underline">PIS</p>
                 <Input label="CST PIS" placeholder="07" maxLength={2} value={formData.pis_cst} onChange={e => setFormData({ ...formData, pis_cst: e.target.value.replace(/\D/g, '') })} />
                 <Input label="Alíq. PIS %" type="number" step="0.01" value={formData.pis_aliquota} onChange={e => setFormData({ ...formData, pis_aliquota: e.target.value })} />
               </div>
               <div className="space-y-3">
-                 <p className="text-[10px] font-black text-gray-400 underline">COFINS</p>
+                 <p className="text-[10px] font-black text-muted-foreground underline">COFINS</p>
                 <Input label="CST COFINS" placeholder="07" maxLength={2} value={formData.cofins_cst} onChange={e => setFormData({ ...formData, cofins_cst: e.target.value.replace(/\D/g, '') })} />
                 <Input label="Alíq. COFINS %" type="number" step="0.01" value={formData.cofins_aliquota} onChange={e => setFormData({ ...formData, cofins_aliquota: e.target.value })} />
               </div>
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 mt-8 pt-6 border-t sticky bottom-0 bg-white pb-2 z-10 scale-100">
+          <div className="flex justify-end gap-3 mt-8 pt-6 border-t sticky bottom-0 bg-card text-card-foreground pb-2 z-10 scale-100">
             <Button variant="ghost" type="button" onClick={() => setIsModalOpen(false)}>Descartar Alterações</Button>
-            <Button type="submit" disabled={loading} className="px-10 h-11 bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-500/30">
+            <Button type="submit" disabled={loading} className="px-10 h-11 bg-primary text-primary-foreground hover:bg-blue-700 shadow-lg shadow-blue-500/30">
                 {loading ? 'Sincronizando...' : 'Concluir Cadastro'}
             </Button>
           </div>
@@ -456,8 +566,8 @@ const Products: React.FC<ProductsProps> = ({ onNotify, currentUser }) => {
             <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Trash2 size={32} />
             </div>
-          <h2 className="text-xl font-black text-gray-800 mb-2">Confirmar Exclusão Definitiva?</h2>
-          <p className="text-gray-500 mb-8 leading-relaxed text-sm">
+          <h2 className="text-xl font-black text-foreground mb-2">Confirmar Exclusão Definitiva?</h2>
+          <p className="text-muted-foreground mb-8 leading-relaxed text-sm">
             Você está prestes a remover <strong>{productToDelete?.nome}</strong>. Esta ação é irreversível e impedirá futuras vendas deste item até que seja recadastrado.
           </p>
           <div className="flex flex-col gap-3">

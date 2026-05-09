@@ -1,0 +1,13 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Shopping Cart Background/Shadow (Optional, for depth) -->
+  
+  <!-- Cart Main Body (Dark Blue) -->
+  <path d="M80 120H130L180 340H400L450 180H165" stroke="#0f172a" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <!-- Wheels -->
+  <circle cx="210" cy="410" r="30" fill="#0f172a"/>
+  <circle cx="370" cy="410" r="30" fill="#0f172a"/>
+  
+  <!-- Lightning Bolt (Light Blue) -->
+  <path d="M300 60L210 240H280L240 440L360 200H280L330 60H300Z" fill="#3b82f6" stroke="#ffffff" stroke-width="8" stroke-linejoin="round"/>
+</svg>

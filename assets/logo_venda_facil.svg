@@ -1,0 +1,29 @@
+<svg width="512" height="512" viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Sutil sombra para destacar o fundo branco -->
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#002D52" flood-opacity="0.15"/>
+    </filter>
+    <style>
+      .dark-blue { fill: #002D52; }
+      .bright-blue { fill: #007BFF; }
+    </style>
+  </defs>
+
+  <!-- Fundo Branco Estilizado (App Icon Style) -->
+  <rect x="10" y="10" width="280" height="280" rx="55" fill="white" filter="url(#shadow)"/>
+
+  <!-- Ícone do Carrinho Centralizado -->
+  <g id="cart-icon" transform="translate(8, 15)">
+    <path d="M40 60H80L105 160H220L245 60" stroke="#002D52" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <path d="M105 160H220" stroke="#002D52" stroke-width="14" stroke-linecap="round" fill="none"/>
+    <path d="M95 110H230" stroke="#002D52" stroke-width="14" stroke-linecap="round" fill="none"/>
+    
+    <circle cx="120" cy="200" r="18" class="dark-blue" />
+    <circle cx="205" cy="200" r="18" class="dark-blue" />
+    <circle cx="120" cy="200" r="8" fill="white" />
+    <circle cx="205" cy="200" r="8" fill="white" />
+
+    <path d="M185 30 L135 130 L175 130 L155 230 L230 100 L190 100 L220 30 Z" class="bright-blue" stroke="white" stroke-width="4" stroke-linejoin="round" />
+  </g>
+</svg>

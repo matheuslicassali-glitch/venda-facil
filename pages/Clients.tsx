@@ -7,6 +7,7 @@ import { Modal } from '../components/ui/Modal';
 import { Client, Permission } from '../types';
 import { db } from '../utils/databaseService';
 import { formatCPF, formatCNPJ, formatPhone, formatCEP, validateCPF, validateCNPJ } from '../utils/validation';
+import { printReport, fmtCurPrint } from '../utils/printUtils';
 
 interface ClientsProps {
     onNotify: (message: string, type: 'success' | 'error') => void;
@@ -173,6 +174,44 @@ const Clients: React.FC<ClientsProps> = ({ onNotify, currentUser }) => {
         }
     };
 
+    const handlePrintClients = () => {
+        const rows = filteredClients.map(c => `
+            <tr>
+                <td>${c.nome}</td>
+                <td>${c.documento}</td>
+                <td>${c.email || '-'}</td>
+                <td>${c.telefone || '-'}</td>
+                <td>${c.cidade}/${c.uf}</td>
+                <td class="text-right">${fmtCurPrint(c.limite_credito)}</td>
+                <td class="text-right">${fmtCurPrint(c.saldo_devedor)}</td>
+            </tr>
+        `).join('');
+
+        const body = `
+            <div class="kpi-grid">
+                <div class="kpi-card"><div class="kpi-label">Total Clientes</div><div class="kpi-value">${clients.length}</div></div>
+                <div class="kpi-card"><div class="kpi-label">Devedores</div><div class="kpi-value">${clients.filter(c => c.saldo_devedor > 0).length}</div></div>
+                <div class="kpi-card"><div class="kpi-label">Saldo em Carteira</div><div class="kpi-value">${fmtCurPrint(clients.reduce((a, c) => a + (c.saldo_devedor || 0), 0))}</div></div>
+            </div>
+            <div class="section-title">Listagem de Clientes</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Documento</th>
+                        <th>Email</th>
+                        <th>Telefone</th>
+                        <th>Local</th>
+                        <th class="text-right">Limite</th>
+                        <th class="text-right">Divida</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+        `;
+        printReport('Relatório de Clientes', body);
+    };
+
     const filteredClients = clients.filter(c =>
         c.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
         c.documento.includes(searchTerm)
@@ -189,27 +228,37 @@ const Clients: React.FC<ClientsProps> = ({ onNotify, currentUser }) => {
 
     return (
         <div className="animate-in fade-in duration-500">
-            <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+            <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 bg-card text-card-foreground p-6 rounded-3xl border border-border shadow-sm">
                 <div>
-                    <h1 className="text-2xl font-black text-gray-800 tracking-tight">Clientes</h1>
-                    <p className="text-gray-600 font-medium font-medium">Gestão de carteira e limites de crédito</p>
+                    <div className="flex items-center gap-2 mb-1">
+                       <div className="w-8 h-8 bg-indigo-600 text-white rounded-lg flex items-center justify-center shadow-lg shadow-indigo-200">
+                          <Users size={18} />
+                       </div>
+                       <h1 className="text-2xl font-black text-foreground tracking-tight">Gestão de Clientes</h1>
+                    </div>
+                    <p className="text-muted-foreground font-medium text-sm">Controle de carteira, histórico e limites de crédito</p>
                 </div>
-                <Button onClick={() => handleOpenModal()} className="shadow-lg shadow-indigo-500/20 bg-indigo-600 hover:bg-indigo-700">
-                    <Plus size={20} />
-                    <span>Novo Cliente</span>
-                </Button>
+                <div className="flex gap-3">
+                    <Button variant="ghost" onClick={handlePrintClients} className="border-border text-slate-600 h-12 px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-background text-foreground">
+                        🖨️ Relatório de Carteira
+                    </Button>
+                    <Button onClick={() => handleOpenModal()} className="h-12 px-8 rounded-2xl bg-indigo-600 text-white font-black text-[10px] uppercase shadow-xl shadow-indigo-200 hover:bg-indigo-700 transition-all">
+                        <Plus size={18} />
+                        <span>Novo Cliente</span>
+                    </Button>
+                </div>
             </header>
 
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="bg-card text-card-foreground rounded-2xl shadow-sm border border-border overflow-hidden">
+                <div className="p-4 border-b border-border bg-muted text-muted-foreground/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="relative max-w-sm w-full">
-                        <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                        <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-muted-foreground">
                             <Search size={18} />
                         </span>
                         <input
                             type="text"
                             placeholder="Buscar por nome ou CPF/CNPJ..."
-                            className="pl-10 w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bold transition-all"
+                            className="pl-10 w-full px-4 py-2.5 bg-card text-card-foreground border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bold transition-all"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
@@ -219,51 +268,51 @@ const Clients: React.FC<ClientsProps> = ({ onNotify, currentUser }) => {
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
                         <thead>
-                            <tr className="bg-gray-50 border-b border-gray-100 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                <th className="px-6 py-4">Cliente / Documento</th>
-                                <th className="px-6 py-4">Contato / Localização</th>
-                                <th className="px-6 py-4">Crédito / Saldo</th>
-                                <th className="px-6 py-4 text-right">Ações</th>
+                            <tr className="bg-background text-foreground border-b border-border text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+                                <th className="px-6 py-5">Identificação do Cliente</th>
+                                <th className="px-6 py-5">Contato / Localização</th>
+                                <th className="px-6 py-5">Saúde Financeira (Crédito)</th>
+                                <th className="px-6 py-5 text-right">Gerenciar</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                             {filteredClients.map((c) => (
-                                <tr key={c.id} className="hover:bg-gray-50 transition-colors group">
+                                <tr key={c.id} className="hover:bg-muted text-muted-foreground transition-colors group">
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-3">
                                             <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center font-black shadow-inner">
                                                 {c.nome.charAt(0).toUpperCase()}
                                             </div>
                                             <div>
-                                                <p className="font-bold text-gray-800">{c.nome}</p>
+                                                <p className="font-bold text-foreground">{c.nome}</p>
                                                 <div className="flex items-center gap-2">
-                                                    <span className="text-[10px] text-gray-400 font-black uppercase tracking-tighter bg-gray-100 px-1 rounded">{c.documento}</span>
-                                                    {c.razao_social && <span className="text-[10px] text-gray-400 font-black uppercase tracking-tighter border-l pl-2 truncate max-w-[150px]">{c.razao_social}</span>}
+                                                    <span className="text-[10px] text-muted-foreground font-black uppercase tracking-tighter bg-gray-100 px-1 rounded">{c.documento}</span>
+                                                    {c.razao_social && <span className="text-[10px] text-muted-foreground font-black uppercase tracking-tighter border-l pl-2 truncate max-w-[150px]">{c.razao_social}</span>}
                                                 </div>
                                             </div>
                                         </div>
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="space-y-1.5">
-                                            <div className="flex items-center gap-2 text-xs font-medium text-gray-500">
+                                            <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
                                                 <Mail size={12} className="text-indigo-400" /> {c.email || 'N/A'}
                                             </div>
-                                            <div className="flex items-center gap-2 text-xs font-medium text-gray-500">
+                                            <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
                                                 <Phone size={12} className="text-indigo-400" /> {c.telefone || 'N/A'}
                                             </div>
-                                            <div className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase">
+                                            <div className="flex items-center gap-2 text-[10px] font-black text-muted-foreground uppercase">
                                                 <MapPin size={10} className="text-gray-300" /> {c.cidade} / {c.uf}
                                             </div>
                                         </div>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 inline-block min-w-[150px]">
+                                        <div className="bg-muted text-muted-foreground p-3 rounded-xl border border-border inline-block min-w-[150px]">
                                             <div className="flex justify-between items-center mb-1">
-                                                <span className="text-[8px] text-gray-400 font-black uppercase">Limite:</span>
+                                                <span className="text-[8px] text-muted-foreground font-black uppercase">Limite:</span>
                                                 <span className="text-xs font-black text-gray-700">{c.limite_credito.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                                             </div>
                                             <div className="flex justify-between items-center">
-                                                <span className="text-[8px] text-gray-400 font-black uppercase">Dívida:</span>
+                                                <span className="text-[8px] text-muted-foreground font-black uppercase">Dívida:</span>
                                                 <span className={`text-xs font-black ${c.saldo_devedor > 0 ? 'text-red-600' : 'text-green-600'}`}>
                                                     {c.saldo_devedor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                                 </span>
@@ -279,11 +328,11 @@ const Clients: React.FC<ClientsProps> = ({ onNotify, currentUser }) => {
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 text-right space-x-1">
-                                        <button onClick={() => handleOpenModal(c)} className="p-2 text-gray-400 hover:text-indigo-600 transition-colors rounded-lg hover:bg-indigo-50" title="Editar">
+                                        <button onClick={() => handleOpenModal(c)} className="p-2 text-muted-foreground hover:text-indigo-600 transition-colors rounded-lg hover:bg-indigo-50" title="Editar">
                                             <Edit size={18} />
                                         </button>
                                         {!isVendedor && (
-                                            <button onClick={() => { setClientToDelete(c); setIsDeleteModalOpen(true); }} className="p-2 text-gray-400 hover:text-red-600 transition-colors rounded-lg hover:bg-red-50" title="Remover">
+                                            <button onClick={() => { setClientToDelete(c); setIsDeleteModalOpen(true); }} className="p-2 text-muted-foreground hover:text-red-600 transition-colors rounded-lg hover:bg-red-50" title="Remover">
                                                 <Trash2 size={18} />
                                             </button>
                                         )}
@@ -294,7 +343,7 @@ const Clients: React.FC<ClientsProps> = ({ onNotify, currentUser }) => {
                                 <tr>
                                     <td colSpan={4} className="py-24 text-center">
                                         <Users size={48} className="mx-auto text-gray-200 mb-4" />
-                                        <p className="text-gray-400 font-black uppercase tracking-widest text-xs">Acelere seu negócio cadastrando clientes</p>
+                                        <p className="text-muted-foreground font-black uppercase tracking-widest text-xs">Acelere seu negócio cadastrando clientes</p>
                                     </td>
                                 </tr>
                             )}
@@ -308,7 +357,7 @@ const Clients: React.FC<ClientsProps> = ({ onNotify, currentUser }) => {
                     <div className="space-y-4">
                         <div className="flex items-center gap-2 border-b-2 border-indigo-100 pb-2">
                             <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg"><UserCheck size={20} /></div>
-                            <h3 className="text-xs font-black text-gray-800 uppercase tracking-widest">Identificação e Contato</h3>
+                            <h3 className="text-xs font-black text-foreground uppercase tracking-widest">Identificação e Contato</h3>
                         </div>
                         
                         <Input label="Nome Completo / Fantasia" placeholder="Nome do cliente" required maxLength={100} value={formData.nome} onChange={e => setFormData({ ...formData, nome: e.target.value })} />
@@ -316,7 +365,7 @@ const Clients: React.FC<ClientsProps> = ({ onNotify, currentUser }) => {
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1">
                                 <Input label="CPF ou CNPJ" placeholder="000..." required value={formData.documento} onChange={e => handleDocChange(e.target.value)} />
-                                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter px-1">Insira apenas números</p>
+                                <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter px-1">Insira apenas números</p>
                             </div>
                             <Input label="Inscrição Estadual" placeholder="Isento" maxLength={20} value={formData.inscricao_estadual} onChange={e => setFormData({ ...formData, inscricao_estadual: e.target.value })} />
                         </div>
@@ -347,7 +396,7 @@ const Clients: React.FC<ClientsProps> = ({ onNotify, currentUser }) => {
                     <div className="space-y-4">
                         <div className="flex items-center gap-2 border-b-2 border-orange-100 pb-2">
                             <div className="p-2 bg-orange-50 text-orange-600 rounded-lg"><MapPin size={20} /></div>
-                            <h3 className="text-xs font-black text-gray-800 uppercase tracking-widest">Localização e Notas</h3>
+                            <h3 className="text-xs font-black text-foreground uppercase tracking-widest">Localização e Notas</h3>
                         </div>
 
                         <div className="grid grid-cols-4 gap-4">
@@ -366,9 +415,9 @@ const Clients: React.FC<ClientsProps> = ({ onNotify, currentUser }) => {
                             <Input label="Bairro" placeholder="Central" required maxLength={50} value={formData.bairro} onChange={e => setFormData({ ...formData, bairro: e.target.value })} />
                             <Input label="Cidade" placeholder="Cidade" required maxLength={50} value={formData.cidade} onChange={e => setFormData({ ...formData, cidade: e.target.value })} />
                             <div className="space-y-1.5">
-                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">UF</label>
+                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">UF</label>
                                 <select 
-                                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 font-bold text-gray-700"
+                                    className="w-full px-4 py-2.5 bg-muted text-muted-foreground border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 font-bold text-gray-700"
                                     value={formData.uf} 
                                     onChange={e => setFormData({ ...formData, uf: e.target.value })}
                                 >
@@ -383,7 +432,7 @@ const Clients: React.FC<ClientsProps> = ({ onNotify, currentUser }) => {
                         <Input label="Referência / Razão Social Secundária" placeholder="Ex: Próximo à padaria" maxLength={150} value={formData.razao_social} onChange={e => setFormData({ ...formData, razao_social: e.target.value })} />
                     </div>
 
-                    <div className="flex justify-end gap-3 mt-8 pt-6 border-t sticky bottom-0 bg-white pb-2 z-10">
+                    <div className="flex justify-end gap-3 mt-8 pt-6 border-t sticky bottom-0 bg-card text-card-foreground pb-2 z-10">
                         <Button variant="ghost" type="button" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
                         <Button type="submit" disabled={loading} className="px-10 h-11 bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-500/30">
                             {loading ? 'Salvando...' : 'Concluir Cadastro'}
@@ -397,8 +446,8 @@ const Clients: React.FC<ClientsProps> = ({ onNotify, currentUser }) => {
                     <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner">
                         <Trash2 size={32} />
                     </div>
-                    <h2 className="text-xl font-black text-gray-800 mb-2">Remover Histórico?</h2>
-                    <p className="text-gray-500 mb-8 leading-relaxed text-sm">
+                    <h2 className="text-xl font-black text-foreground mb-2">Remover Histórico?</h2>
+                    <p className="text-muted-foreground mb-8 leading-relaxed text-sm">
                         Tem certeza que deseja apagar o registro de <strong>{clientToDelete?.nome}</strong>?
                         {clientToDelete?.saldo_devedor && clientToDelete.saldo_devedor > 0 && (
                             <span className="block mt-2 font-black text-red-600 uppercase text-[10px] animate-bounce">Aviso: Este cliente ainda possui uma dívida de {clientToDelete.saldo_devedor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>

@@ -173,35 +173,40 @@ const Employees: React.FC<EmployeesProps> = ({ onNotify, currentUser }) => {
 
   const getBadge = (cargo: string) => {
     if (cargo === 'Administrador') return <span className="flex items-center gap-1 text-[10px] font-black text-red-600 bg-red-50 px-2 py-0.5 rounded-full border border-red-100 uppercase tracking-tighter shadow-sm"><ShieldCheck size={12} /> Admin Sup.</span>;
-    if (cargo === 'Gerente') return <span className="flex items-center gap-1 text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100 uppercase tracking-tighter shadow-sm"><BadgeCheck size={12} /> Gestão</span>;
+    if (cargo === 'Gerente') return <span className="flex items-center gap-1 text-[10px] font-black text-primary bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100 uppercase tracking-tighter shadow-sm"><BadgeCheck size={12} /> Gestão</span>;
     return <span className="flex items-center gap-1 text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100 uppercase tracking-tighter shadow-sm"><UserCircle size={12} /> {cargo}</span>;
   };
 
   return (
     <div className="animate-in fade-in duration-500">
-      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 bg-card text-card-foreground p-6 rounded-3xl border border-border shadow-sm">
         <div>
-          <h1 className="text-2xl font-black text-gray-800 tracking-tight">Equipe e Segurança</h1>
-          <p className="text-gray-600 font-medium">Gestão de colaboradores e privilégios de acesso</p>
+           <div className="flex items-center gap-2 mb-1">
+              <div className="w-8 h-8 bg-primary text-primary-foreground rounded-lg flex items-center justify-center shadow-lg shadow-blue-200">
+                 <Users size={18} />
+              </div>
+              <h1 className="text-2xl font-black text-foreground tracking-tight">Equipe e Segurança</h1>
+           </div>
+          <p className="text-muted-foreground font-medium text-sm">Gestão de colaboradores, privilégios e auditoria de acesso</p>
         </div>
         {(isSuperAdmin || isGerente) && (
-            <Button onClick={() => handleOpenModal()} className="shadow-lg shadow-blue-500/20 bg-blue-600 hover:bg-blue-700">
-            <UserPlus size={20} />
+            <Button onClick={() => handleOpenModal()} className="h-12 px-8 rounded-2xl bg-primary text-primary-foreground font-black text-[10px] uppercase shadow-xl shadow-blue-200 hover:bg-blue-700 transition-all">
+            <UserPlus size={18} />
             <span>Adicionar Colaborador</span>
             </Button>
         )}
       </header>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-card text-card-foreground rounded-2xl shadow-sm border border-border overflow-hidden">
+        <div className="p-4 border-b border-border bg-muted text-muted-foreground/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="relative max-w-sm w-full">
-            <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+            <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-muted-foreground">
               <Search size={18} />
             </span>
             <input
               type="text"
               placeholder="Buscar colaborador..."
-              className="pl-10 w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold transition-all shadow-sm"
+              className="pl-10 w-full px-4 py-2.5 bg-card text-card-foreground border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-ring font-bold transition-all shadow-sm"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -211,27 +216,27 @@ const Employees: React.FC<EmployeesProps> = ({ onNotify, currentUser }) => {
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className="bg-gray-50 border-b border-gray-100 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                <th className="px-6 py-4">Informações do Colaborador</th>
-                <th className="px-6 py-4">Nível de Acesso</th>
-                <th className="px-6 py-4">Ganhos / Metas</th>
-                <th className="px-6 py-4">Status do Acesso</th>
-                <th className="px-6 py-4 text-right">Ações</th>
+              <tr className="bg-background text-foreground border-b border-border text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+                <th className="px-6 py-5">Perfil do Colaborador</th>
+                <th className="px-6 py-5">Nível de Privilégios</th>
+                <th className="px-6 py-5">Ganhos / Metas</th>
+                <th className="px-6 py-5">Estado do Acesso</th>
+                <th className="px-6 py-5 text-right">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filtered.map((emp) => (
-                <tr key={emp.id} className="hover:bg-gray-50 transition-colors group">
+                <tr key={emp.id} className="hover:bg-muted text-muted-foreground transition-colors group">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center font-black shadow-inner">
+                      <div className="w-12 h-12 bg-blue-100 text-primary rounded-2xl flex items-center justify-center font-black shadow-inner">
                         {emp.nome.charAt(0).toUpperCase()}
                       </div>
                       <div>
-                        <p className="font-bold text-gray-800">{emp.nome}</p>
+                        <p className="font-bold text-foreground">{emp.nome}</p>
                         <div className="flex items-center gap-2">
-                             <span className="text-[10px] text-gray-400 font-black tracking-tighter bg-gray-100 px-1 rounded">{emp.cpf}</span>
-                             <span className="text-[10px] text-gray-400 font-bold lowercase">{emp.email}</span>
+                             <span className="text-[10px] text-muted-foreground font-black tracking-tighter bg-gray-100 px-1 rounded">{emp.cpf}</span>
+                             <span className="text-[10px] text-muted-foreground font-bold lowercase">{emp.email}</span>
                         </div>
                       </div>
                     </div>
@@ -242,17 +247,17 @@ const Employees: React.FC<EmployeesProps> = ({ onNotify, currentUser }) => {
                       {emp.cargo === 'Administrador' ? (
                           <span className="text-[8px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-black uppercase tracking-widest">Sistema Total</span>
                       ) : emp.permissoes?.slice(0, 3).map(p => (
-                        <span key={p} className="text-[8px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded font-black uppercase tracking-widest">{p}</span>
+                        <span key={p} className="text-[8px] bg-gray-100 text-muted-foreground px-1.5 py-0.5 rounded font-black uppercase tracking-widest">{p}</span>
                       ))}
                       {emp.permissoes && emp.permissoes.length > 3 && (
-                          <span className="text-[8px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded font-black uppercase tracking-widest">+{emp.permissoes.length - 3}</span>
+                          <span className="text-[8px] bg-gray-100 text-muted-foreground px-1.5 py-0.5 rounded font-black uppercase tracking-widest">+{emp.permissoes.length - 3}</span>
                       )}
                     </div>
                   </td>
                   <td className="px-6 py-4 text-center">
                     <div className="inline-flex flex-col items-center">
-                        <span className="text-base font-black text-gray-800">{emp.comissao}%</span>
-                        <span className="text-[8px] text-gray-400 font-black uppercase tracking-widest">Comissão</span>
+                        <span className="text-base font-black text-foreground">{emp.comissao}%</span>
+                        <span className="text-[8px] text-muted-foreground font-black uppercase tracking-widest">Comissão</span>
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -269,11 +274,11 @@ const Employees: React.FC<EmployeesProps> = ({ onNotify, currentUser }) => {
                     </button>
                   </td>
                   <td className="px-6 py-4 text-right space-x-1">
-                    <button onClick={() => handleOpenModal(emp)} className="p-2.5 text-gray-400 hover:text-blue-600 transition-colors rounded-xl hover:bg-blue-50 group-hover:shadow-sm" title="Editar Permissões">
+                    <button onClick={() => handleOpenModal(emp)} className="p-2.5 text-muted-foreground hover:text-primary transition-colors rounded-xl hover:bg-blue-50 group-hover:shadow-sm" title="Editar Permissões">
                       <Edit size={18} />
                     </button>
                     {(isSuperAdmin || isGerente) && emp.id !== currentUser?.id && (
-                        <button onClick={() => { setEmpToDelete(emp); setIsDeleteModalOpen(true); }} className="p-2.5 text-gray-400 hover:text-red-600 transition-colors rounded-xl hover:bg-red-50 group-hover:shadow-sm" title="Excluir Colaborador">
+                        <button onClick={() => { setEmpToDelete(emp); setIsDeleteModalOpen(true); }} className="p-2.5 text-muted-foreground hover:text-red-600 transition-colors rounded-xl hover:bg-red-50 group-hover:shadow-sm" title="Excluir Colaborador">
                         <Trash2 size={18} />
                         </button>
                     )}
@@ -284,7 +289,7 @@ const Employees: React.FC<EmployeesProps> = ({ onNotify, currentUser }) => {
                 <tr>
                   <td colSpan={5} className="py-24 text-center">
                       <Users size={48} className="mx-auto text-gray-200 mb-4" />
-                      <p className="text-gray-400 font-black uppercase tracking-widest text-xs">Acelere sua equipe contratando talentos</p>
+                      <p className="text-muted-foreground font-black uppercase tracking-widest text-xs">Acelere sua equipe contratando talentos</p>
                   </td>
                 </tr>
               )}
@@ -297,8 +302,8 @@ const Employees: React.FC<EmployeesProps> = ({ onNotify, currentUser }) => {
         <form onSubmit={handleSave} className="space-y-8 max-h-[75vh] overflow-y-auto px-1 custom-scrollbar">
           <div className="space-y-5">
              <div className="flex items-center gap-2 border-b-2 border-blue-100 pb-2">
-                <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><UserCircle size={20} /></div>
-                <h3 className="text-xs font-black text-gray-800 uppercase tracking-widest">Informações Pessoais</h3>
+                <div className="p-2 bg-blue-50 text-primary rounded-lg"><UserCircle size={20} /></div>
+                <h3 className="text-xs font-black text-foreground uppercase tracking-widest">Informações Pessoais</h3>
             </div>
 
             <Input label="Nome Completo do Colaborador" placeholder="Ex: Lucas Henrique Silva" required maxLength={100} value={formData.nome} onChange={e => setFormData({ ...formData, nome: e.target.value })} />
@@ -308,12 +313,12 @@ const Employees: React.FC<EmployeesProps> = ({ onNotify, currentUser }) => {
               <Input label="E-mail Corporativo" type="email" placeholder="acesso@empresa.com" required maxLength={100} value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
             </div>
 
-            <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+            <div className="grid grid-cols-2 gap-4 p-4 bg-muted text-muted-foreground rounded-2xl border border-border">
                 <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Função no Sistema</label>
+                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Função no Sistema</label>
                     <div className="relative">
                         <select
-                            className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl font-bold text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none transition-all shadow-sm"
+                            className="w-full px-4 py-2.5 bg-card text-card-foreground border border-border rounded-xl font-bold text-gray-700 focus:outline-none focus:ring-2 focus:ring-ring appearance-none transition-all shadow-sm"
                             value={formData.cargo}
                             disabled={editingEmp?.cargo === 'Administrador' && !isSuperAdmin}
                             onChange={e => {
@@ -330,7 +335,7 @@ const Employees: React.FC<EmployeesProps> = ({ onNotify, currentUser }) => {
                             <option value="Estoquista">ESTOQUISTA / LOGÍSTICA</option>
                             {isSuperAdmin && <option value="Administrador">ADMINISTRADOR TOTAL</option>}
                         </select>
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
                              <ShieldCheck size={16} />
                         </div>
                     </div>
@@ -363,10 +368,10 @@ const Employees: React.FC<EmployeesProps> = ({ onNotify, currentUser }) => {
           <div className="space-y-5">
             <div className="flex items-center gap-2 border-b-2 border-emerald-100 pb-2">
                 <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg"><Lock size={20} /></div>
-                <h3 className="text-xs font-black text-gray-800 uppercase tracking-widest">Permissões Detalhadas</h3>
+                <h3 className="text-xs font-black text-foreground uppercase tracking-widest">Permissões Detalhadas</h3>
             </div>
             
-            <div className={`grid grid-cols-2 md:grid-cols-3 gap-3 bg-gray-50/50 p-4 rounded-3xl border-2 border-dashed border-gray-100 ${formData.cargo === 'Administrador' ? 'opacity-50 pointer-events-none' : ''}`}>
+            <div className={`grid grid-cols-2 md:grid-cols-3 gap-3 bg-muted text-muted-foreground/50 p-4 rounded-3xl border-2 border-dashed border-border ${formData.cargo === 'Administrador' ? 'opacity-50 pointer-events-none' : ''}`}>
               {[
                 { id: 'produtos', label: 'Cadastro Produtos' },
                 { id: 'pdv', label: 'Terminal Vendas' },
@@ -380,7 +385,7 @@ const Employees: React.FC<EmployeesProps> = ({ onNotify, currentUser }) => {
                 { id: 'configuracoes', label: 'Config. Sistema' },
                 { id: 'nfe', label: 'Faturamento NF-e' }
               ].map(p => (
-                <label key={p.id} className="flex items-center gap-3 cursor-pointer group p-3 bg-white rounded-2xl border border-gray-100 hover:border-emerald-500 transition-all shadow-sm">
+                <label key={p.id} className="flex items-center gap-3 cursor-pointer group p-3 bg-card text-card-foreground rounded-2xl border border-border hover:border-emerald-500 transition-all shadow-sm">
                   <div className="relative flex items-center">
                     <input
                         type="checkbox"
@@ -394,14 +399,14 @@ const Employees: React.FC<EmployeesProps> = ({ onNotify, currentUser }) => {
                         }}
                     />
                     <div className="w-5 h-5 border-2 border-gray-300 rounded-lg peer-checked:bg-emerald-500 peer-checked:border-emerald-500 transition-all flex items-center justify-center">
-                        <div className="w-2 h-2 bg-white rounded-sm opacity-0 peer-checked:opacity-100 transition-all"></div>
+                        <div className="w-2 h-2 bg-card text-card-foreground rounded-sm opacity-0 peer-checked:opacity-100 transition-all"></div>
                     </div>
                   </div>
                   <span className="text-[10px] font-black text-gray-700 group-hover:text-emerald-700 transition-colors uppercase tracking-tight">{p.label}</span>
                 </label>
               ))}
               {formData.cargo === 'Administrador' && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-[2px] rounded-3xl z-10">
+                  <div className="absolute inset-0 flex items-center justify-center bg-card text-card-foreground/60 backdrop-blur-[2px] rounded-3xl z-10">
                       <div className="bg-red-600 text-white px-4 py-2 rounded-full text-xs font-black shadow-xl shadow-red-500/40 uppercase tracking-widest flex items-center gap-2">
                         <ShieldCheck size={16} /> Acesso Total Master
                       </div>
@@ -410,9 +415,9 @@ const Employees: React.FC<EmployeesProps> = ({ onNotify, currentUser }) => {
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 mt-8 pt-6 border-t sticky bottom-0 bg-white pb-2 z-20">
+          <div className="flex justify-end gap-3 mt-8 pt-6 border-t sticky bottom-0 bg-card text-card-foreground pb-2 z-20">
             <Button variant="ghost" type="button" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
-            <Button type="submit" disabled={loading} className="px-10 h-11 bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-500/30">
+            <Button type="submit" disabled={loading} className="px-10 h-11 bg-primary text-primary-foreground hover:bg-blue-700 shadow-lg shadow-blue-500/30">
                 {loading ? 'Salvando...' : 'Finalizar Cadastro'}
             </Button>
           </div>
@@ -424,8 +429,8 @@ const Employees: React.FC<EmployeesProps> = ({ onNotify, currentUser }) => {
             <div className="w-20 h-20 bg-red-100 text-red-600 rounded-3xl flex items-center justify-center mx-auto mb-6 rotate-3 shadow-lg group-hover:rotate-0 transition-transform">
                 <Trash2 size={40} />
             </div>
-          <h2 className="text-2xl font-black text-gray-800 mb-2">Revogar Acessos?</h2>
-          <p className="text-gray-500 mb-10 leading-relaxed text-sm">
+          <h2 className="text-2xl font-black text-foreground mb-2">Revogar Acessos?</h2>
+          <p className="text-muted-foreground mb-10 leading-relaxed text-sm">
             Você está removendo as credenciais de <strong>{empToDelete?.nome}</strong>. 
             Todas as sessões ativas deste usuário serão derrubadas e ele não poderá mais realizar vendas ou acessar dados.
           </p>

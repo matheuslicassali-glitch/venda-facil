@@ -1,31 +1,41 @@
-
 import React from 'react';
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
+  error?: string;
 }
 
-export const Input: React.FC<InputProps> = ({ label, className = '', ...props }) => {
+export const Input: React.FC<InputProps> = ({ label, error, className = '', ...props }) => {
   return (
-    <div className="w-full">
-      {label && <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>}
+    <div className="w-full space-y-1.5">
+      {label && (
+        <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest italic ml-1">
+          {label}
+        </label>
+      )}
       <input 
-        className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${className}`}
+        className={`w-full h-12 px-4 bg-card text-card-foreground border border-border rounded-xl font-bold text-foreground placeholder:text-slate-300 focus:outline-none focus:ring-4 focus:ring-ring/10 focus:border-blue-500 transition-all ${error ? 'border-red-500 ring-red-500/10' : ''} ${className}`}
         {...props} 
       />
+      {error && <p className="text-[10px] font-bold text-red-500 ml-1 italic">{error}</p>}
     </div>
   );
 };
 
-export const Textarea: React.FC<React.TextareaHTMLAttributes<HTMLTextAreaElement> & { label?: string }> = ({ label, className = '', ...props }) => {
+export const Textarea: React.FC<React.TextareaHTMLAttributes<HTMLTextAreaElement> & { label?: string, error?: string }> = ({ label, error, className = '', ...props }) => {
   return (
-    <div className="w-full">
-      {label && <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>}
+    <div className="w-full space-y-1.5">
+      {label && (
+        <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest italic ml-1">
+          {label}
+        </label>
+      )}
       <textarea 
-        className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${className}`}
+        className={`w-full px-4 py-3 bg-card text-card-foreground border border-border rounded-xl font-bold text-foreground placeholder:text-slate-300 focus:outline-none focus:ring-4 focus:ring-ring/10 focus:border-blue-500 transition-all ${error ? 'border-red-500 ring-red-500/10' : ''} ${className}`}
         rows={3}
         {...props} 
       />
+      {error && <p className="text-[10px] font-bold text-red-500 ml-1 italic">{error}</p>}
     </div>
   );
 };

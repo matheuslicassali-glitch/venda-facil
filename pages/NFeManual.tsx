@@ -170,14 +170,14 @@ const NFeManual: React.FC<NFeManualProps> = ({ onNotify }) => {
         <div className="animate-in fade-in duration-500 pb-20">
             <header className="flex items-center justify-between mb-8">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800 tracking-tight">Emissão Manual de NF-e</h1>
+                    <h1 className="text-2xl font-bold text-foreground tracking-tight">Emissão Manual de NF-e</h1>
                     <p className="text-gray-600">Modelo 55 - Nota Fiscal Eletrônica</p>
                 </div>
                 <div className="flex gap-2">
                     <Button variant="ghost" onClick={() => window.dispatchEvent(new CustomEvent('navigate', { detail: 'nfe' }))}>
                         <ArrowLeft size={18} /> Voltar
                     </Button>
-                    <Button onClick={handleEmit} disabled={loading} className="bg-blue-600">
+                    <Button onClick={handleEmit} disabled={loading} className="bg-primary text-primary-foreground">
                         <Save size={18} /> {loading ? 'Emitindo...' : 'Emitir NF-e'}
                     </Button>
                 </div>
@@ -186,8 +186,8 @@ const NFeManual: React.FC<NFeManualProps> = ({ onNotify }) => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 space-y-6">
                     {/* Dados da Operação */}
-                    <section className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-                        <h2 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <section className="bg-card text-card-foreground p-6 rounded-xl border border-border shadow-sm">
+                        <h2 className="text-sm font-black text-muted-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
                             <Calculator size={16} /> Dados da Operação
                         </h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -197,8 +197,8 @@ const NFeManual: React.FC<NFeManualProps> = ({ onNotify }) => {
                                 onChange={e => setNaturezaOperacao(e.target.value)}
                             />
                             <div className="space-y-1.5">
-                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Finalidade de Emissão</label>
-                                <select className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none font-medium">
+                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Finalidade de Emissão</label>
+                                <select className="w-full px-4 py-2.5 bg-muted text-muted-foreground border border-border rounded-lg outline-none font-medium">
                                     <option>1 - Normal</option>
                                     <option>4 - Devolução de Mercadoria</option>
                                 </select>
@@ -207,12 +207,12 @@ const NFeManual: React.FC<NFeManualProps> = ({ onNotify }) => {
                     </section>
 
                     {/* Destinatário */}
-                    <section className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-                        <h2 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <section className="bg-card text-card-foreground p-6 rounded-xl border border-border shadow-sm">
+                        <h2 className="text-sm font-black text-muted-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
                             <User size={16} /> Destinatário
                         </h2>
                         <select
-                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none font-black text-gray-700"
+                            className="w-full px-4 py-2.5 bg-muted text-muted-foreground border border-border rounded-lg outline-none font-black text-gray-700"
                             value={selectedClient?.id || ''}
                             onChange={e => setSelectedClient(clients.find(c => c.id === e.target.value) || null)}
                         >
@@ -231,9 +231,9 @@ const NFeManual: React.FC<NFeManualProps> = ({ onNotify }) => {
                     </section>
 
                     {/* Itens da Nota */}
-                    <section className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                        <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
-                            <h2 className="text-sm font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                    <section className="bg-card text-card-foreground rounded-xl border border-border shadow-sm overflow-hidden">
+                        <div className="p-4 border-b border-border bg-muted text-muted-foreground/50 flex items-center justify-between">
+                            <h2 className="text-sm font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
                                 <ShoppingBag size={16} /> Itens da NF-e
                             </h2>
                             <div className="relative w-64">
@@ -243,9 +243,9 @@ const NFeManual: React.FC<NFeManualProps> = ({ onNotify }) => {
                                     onChange={e => handleSearchProduct(e.target.value)}
                                 />
                                 {foundProducts.length > 0 && (
-                                    <div className="absolute top-full left-0 w-full bg-white border shadow-xl rounded-b-lg z-50 max-h-48 overflow-y-auto">
+                                    <div className="absolute top-full left-0 w-full bg-card text-card-foreground border shadow-xl rounded-b-lg z-50 max-h-48 overflow-y-auto">
                                         {foundProducts.map(p => (
-                                            <button key={p.id} onClick={() => addToCart(p)} className="w-full p-2 text-left hover:bg-gray-50 border-b text-xs flex justify-between">
+                                            <button key={p.id} onClick={() => addToCart(p)} className="w-full p-2 text-left hover:bg-muted text-muted-foreground border-b text-xs flex justify-between">
                                                 <span>{p.nome}</span>
                                                 <span className="font-bold">R$ {p.preco_venda.toFixed(2)}</span>
                                             </button>
@@ -257,7 +257,7 @@ const NFeManual: React.FC<NFeManualProps> = ({ onNotify }) => {
 
                         <table className="w-full text-left">
                             <thead>
-                                <tr className="text-[10px] font-black text-gray-400 uppercase border-b bg-gray-25">
+                                <tr className="text-[10px] font-black text-muted-foreground uppercase border-b bg-gray-25">
                                     <th className="px-6 py-3">Cód</th>
                                     <th className="px-6 py-3">Descrição</th>
                                     <th className="px-6 py-3">Qtd</th>
@@ -269,7 +269,7 @@ const NFeManual: React.FC<NFeManualProps> = ({ onNotify }) => {
                             <tbody className="divide-y text-sm">
                                 {cart.map(item => (
                                     <tr key={item.id}>
-                                        <td className="px-6 py-3 font-mono text-gray-400">{item.produto_id.slice(0, 5)}</td>
+                                        <td className="px-6 py-3 font-mono text-muted-foreground">{item.produto_id.slice(0, 5)}</td>
                                         <td className="px-6 py-3 font-bold text-gray-700">{item.nome}</td>
                                         <td className="px-6 py-3">{item.quantidade}</td>
                                         <td className="px-6 py-3">R$ {item.preco_unitario.toFixed(2)}</td>
@@ -293,26 +293,26 @@ const NFeManual: React.FC<NFeManualProps> = ({ onNotify }) => {
 
                 <div className="space-y-6">
                     {/* Totais */}
-                    <section className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm space-y-4">
-                        <h2 className="text-sm font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                    <section className="bg-card text-card-foreground p-6 rounded-xl border border-border shadow-sm space-y-4">
+                        <h2 className="text-sm font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
                             <Calculator size={16} /> Totais da Nota
                         </h2>
                         <div className="space-y-2 text-sm border-b pb-4">
-                            <div className="flex justify-between text-gray-500"><span>Prod. e Serviços</span> <span>R$ {total.toFixed(2)}</span></div>
-                            <div className="flex justify-between text-gray-500"><span>Frete / Seguro</span> <span>R$ 0,00</span></div>
+                            <div className="flex justify-between text-muted-foreground"><span>Prod. e Serviços</span> <span>R$ {total.toFixed(2)}</span></div>
+                            <div className="flex justify-between text-muted-foreground"><span>Frete / Seguro</span> <span>R$ 0,00</span></div>
                         </div>
-                        <div className="flex justify-between items-center bg-gray-50 p-4 rounded-xl">
-                            <span className="font-black text-gray-400 uppercase text-xs">Total NFe</span>
+                        <div className="flex justify-between items-center bg-muted text-muted-foreground p-4 rounded-xl">
+                            <span className="font-black text-muted-foreground uppercase text-xs">Total NFe</span>
                             <span className="text-2xl font-black text-blue-700 tracking-tighter">R$ {total.toFixed(2)}</span>
                         </div>
                     </section>
 
                     {/* Transporte */}
-                    <section className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm space-y-4">
-                        <h2 className="text-sm font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                    <section className="bg-card text-card-foreground p-6 rounded-xl border border-border shadow-sm space-y-4">
+                        <h2 className="text-sm font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
                             <Truck size={16} /> Transporte
                         </h2>
-                        <select className="w-full px-4 py-2 bg-gray-50 border rounded-lg text-xs outline-none">
+                        <select className="w-full px-4 py-2 bg-muted text-muted-foreground border rounded-lg text-xs outline-none">
                             <option>0 - Contratação por conta do Remetente (CIF)</option>
                             <option>1 - Contratação por conta do Destinatário (FOB)</option>
                             <option>9 - Sem Ocorrência de Transporte</option>
@@ -320,12 +320,12 @@ const NFeManual: React.FC<NFeManualProps> = ({ onNotify }) => {
                     </section>
 
                     {/* Informações Complementares */}
-                    <section className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm space-y-4">
-                        <h2 className="text-sm font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                    <section className="bg-card text-card-foreground p-6 rounded-xl border border-border shadow-sm space-y-4">
+                        <h2 className="text-sm font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
                             <FileText size={16} /> Info. Complementares
                         </h2>
                         <textarea
-                            className="w-full p-3 bg-gray-50 border rounded-xl text-xs outline-none h-24"
+                            className="w-full p-3 bg-muted text-muted-foreground border rounded-xl text-xs outline-none h-24"
                             placeholder="Ex: Documento emitido por ME ou EPP Optante pelo Simples Nacional..."
                         ></textarea>
                     </section>
