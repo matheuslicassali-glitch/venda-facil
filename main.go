@@ -36,6 +36,25 @@ func main() {
 	// Inicializar Banco de Dados
 	ConectarBanco()
 
+	// ─── Verificação de Licença Online ─────────────────────────────────
+	// Busca o serial da configuração da empresa
+	var config ConfiguracaoEmpresa
+	DB.First(&config)
+	status, err := VerificarLicencaOnline(config.SerialChave)
+	if err != nil {
+		log.Println("[LICENÇA] Erro ao verificar:", err)
+	} else if status != nil {
+		switch status.Status {
+		case "bloqueado":
+			log.Fatal("[LICENÇA] SISTEMA BLOQUEADO. Motivo: " + status.MotivoBloqueio + ". Contate o suporte.")
+		case "expirado":
+			log.Fatal("[LICENÇA] LICENÇA EXPIRADA. Entre em contato para renovar.")
+		default:
+			log.Printf("[LICENÇA] ✅ Licença ATIVA - %s\n", status.NomeEmpresa)
+		}
+	}
+	// ────────────────────────────────────────────────────────────────────
+
 	// Iniciar API em segundo plano
 	apiEngine := SetupAPI()
 	
