@@ -10,24 +10,30 @@ export default function Dashboard() {
     clientes: 0
   });
 
-  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadDashboard() {
       try {
-        console.log('Fetching dashboard data...');
-        // Puxa total de clientes
-        const { count: countClientes, error: errClientes } = await supabase.from('clientes').select('*', { count: 'exact', head: true });
-        if (errClientes) console.error('Error fetching clientes:', errClientes);
+        setError(null);
+        console.log('Fetching dashboard data from:', supabase.auth.getSession());
+        
+        // Test connection
+        const { error: testErr } = await supabase.from('produtos').select('id').limit(1);
+        if (testErr) {
+          setError(`Erro de Conexão: ${testErr.message}. Verifique a URL do Supabase.`);
+          setLoading(false);
+          return;
+        }
 
+        // Puxa total de clientes
+        const { count: countClientes } = await supabase.from('clientes').select('*', { count: 'exact', head: true });
+        
         // Puxa total de produtos
-        const { count: countProdutos, error: errProdutos } = await supabase.from('produtos').select('*', { count: 'exact', head: true });
-        if (errProdutos) console.error('Error fetching produtos:', errProdutos);
+        const { count: countProdutos } = await supabase.from('produtos').select('*', { count: 'exact', head: true });
         
         // Puxa as vendas
-        const { data: vendas, error: errVendas } = await supabase.from('vendas').select('valor_total');
-        if (errVendas) console.error('Error fetching vendas:', errVendas);
-
+        const { data: vendas } = await supabase.from('vendas').select('valor_total');
         const totalVendasValor = vendas?.reduce((acc, curr) => acc + Number(curr.valor_total), 0) || 0;
 
         setStats({
@@ -36,8 +42,8 @@ export default function Dashboard() {
           produtos: countProdutos || 0,
           clientes: countClientes || 0
         });
-      } catch (err) {
-        console.error('Unexpected error in loadDashboard:', err);
+      } catch (err: any) {
+        setError(`Erro inesperado: ${err.message}`);
       } finally {
         setLoading(false);
       }
@@ -47,6 +53,16 @@ export default function Dashboard() {
 
   if (loading) {
     return <div className="p-8 flex justify-center"><CloudSync className="animate-spin text-primary-500 w-8 h-8" /></div>;
+  }
+
+  if (error) {
+    return (
+      <div className="p-8 m-6 bg-red-50 border border-red-200 rounded-2xl text-red-700">
+        <h3 className="font-bold text-lg mb-2">⚠️ Problema na Conexão Cloud</h3>
+        <p className="text-sm">{error}</p>
+        <p className="text-xs mt-4 opacity-70">Certifique-se de que a URL do Supabase nas variáveis de ambiente do Vercel está correta.</p>
+      </div>
+    );
   }
 
   return (
