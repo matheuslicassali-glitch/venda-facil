@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { 
   Search, ShoppingCart, Trash2, Plus, Minus, User, CreditCard, 
-  Banknote, QrCode, X, CheckCircle2, LayoutGrid, Tag, Clock, Package
+  Banknote, QrCode, CheckCircle2, LayoutGrid, Tag, Package
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
-import { Product, Sale, SaleItem, Client, CashSession } from '../types';
+import { Product, SaleItem, CashSession } from '../types';
 
 export default function PDV() {
   // Dados
@@ -68,7 +68,7 @@ export default function PDV() {
       ));
     } else {
       setCart([...cart, {
-        id: crypto.randomUUID(),
+        id: Math.random().toString(36).substring(2, 11),
         produto_id: product.id,
         nome: product.nome,
         quantidade: 1,
@@ -101,7 +101,7 @@ export default function PDV() {
   const finalizeSale = async () => {
     setLoading(true);
     try {
-      const saleId = crypto.randomUUID();
+      const saleId = Math.random().toString(36).substring(2, 11);
       const saleData = {
         id: saleId,
         data_venda: new Date().toISOString(),
@@ -120,7 +120,7 @@ export default function PDV() {
 
       // Itens da venda
       const itemsData = cart.map(item => ({
-        id: crypto.randomUUID(),
+        id: Math.random().toString(36).substring(2, 11),
         venda_id: saleId,
         produto_id: item.produto_id,
         nome: item.nome,

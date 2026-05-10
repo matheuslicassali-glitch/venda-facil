@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Package, Unlock, Lock, TrendingUp, TrendingDown, DollarSign, History } from 'lucide-react';
+import { Unlock, Lock, TrendingUp, TrendingDown, History } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
@@ -40,7 +40,7 @@ export default function Caixa() {
 
   const openCashier = async () => {
     const { data, error } = await supabase.from('caixa_sessoes').insert({
-      id: crypto.randomUUID(),
+      id: Math.random().toString(36).substring(2, 11),
       data_abertura: new Date().toISOString(),
       saldo_inicial: Number(valorAbertura),
       saldo_final: Number(valorAbertura),
@@ -73,7 +73,7 @@ export default function Caixa() {
   const addTransaction = async () => {
     const valor = Number(valorTransacao);
     const { error } = await supabase.from('caixa_movimentacoes').insert({
-      id: crypto.randomUUID(),
+      id: Math.random().toString(36).substring(2, 11),
       caixa_id: session.id,
       tipo: isTransactionModal.tipo,
       valor: valor,
