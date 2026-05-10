@@ -9,16 +9,27 @@ export default function Vendas() {
 
   useEffect(() => {
     async function load() {
-      const { data } = await supabase
-        .from('vendas')
-        .select('*, clientes(nome)')
-        .order('data_venda', { ascending: false })
-        .limit(100);
-      if (data) {
-        setVendas(data);
-        setTotalValor(data.reduce((acc, v) => acc + Number(v.valor_total), 0));
+      try {
+        const { data, error } = await supabase
+          .from('vendas')
+          .select('*, clientes(nome)')
+          .order('data_venda', { ascending: false })
+          .limit(100);
+          
+        if (error) {
+          console.error('Supabase error fetching vendas:', error);
+          return;
+        }
+
+        if (data) {
+          setVendas(data);
+          setTotalValor(data.reduce((acc, v) => acc + Number(v.valor_total), 0));
+        }
+      } catch (err) {
+        console.error('Unexpected fetch error:', err);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
     load();
   }, []);

@@ -14,22 +14,33 @@ export default function Dashboard() {
 
   useEffect(() => {
     async function loadDashboard() {
-      // Puxa total de clientes
-      const { count: countClientes } = await supabase.from('clientes').select('*', { count: 'exact', head: true });
-      // Puxa total de produtos
-      const { count: countProdutos } = await supabase.from('produtos').select('*', { count: 'exact', head: true });
-      
-      // Puxa as vendas
-      const { data: vendas } = await supabase.from('vendas').select('valor_total');
-      const totalVendasValor = vendas?.reduce((acc, curr) => acc + Number(curr.valor_total), 0) || 0;
+      try {
+        console.log('Fetching dashboard data...');
+        // Puxa total de clientes
+        const { count: countClientes, error: errClientes } = await supabase.from('clientes').select('*', { count: 'exact', head: true });
+        if (errClientes) console.error('Error fetching clientes:', errClientes);
 
-      setStats({
-        vendasHoje: vendas?.length || 0,
-        vendasValor: totalVendasValor,
-        produtos: countProdutos || 0,
-        clientes: countClientes || 0
-      });
-      setLoading(false);
+        // Puxa total de produtos
+        const { count: countProdutos, error: errProdutos } = await supabase.from('produtos').select('*', { count: 'exact', head: true });
+        if (errProdutos) console.error('Error fetching produtos:', errProdutos);
+        
+        // Puxa as vendas
+        const { data: vendas, error: errVendas } = await supabase.from('vendas').select('valor_total');
+        if (errVendas) console.error('Error fetching vendas:', errVendas);
+
+        const totalVendasValor = vendas?.reduce((acc, curr) => acc + Number(curr.valor_total), 0) || 0;
+
+        setStats({
+          vendasHoje: vendas?.length || 0,
+          vendasValor: totalVendasValor,
+          produtos: countProdutos || 0,
+          clientes: countClientes || 0
+        });
+      } catch (err) {
+        console.error('Unexpected error in loadDashboard:', err);
+      } finally {
+        setLoading(false);
+      }
     }
     loadDashboard();
   }, []);
