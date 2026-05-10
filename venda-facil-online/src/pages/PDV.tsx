@@ -14,7 +14,6 @@ export default function PDV() {
   const [cart, setCart] = useState<SaleItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [foundProducts, setFoundProducts] = useState<Product[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [session, setSession] = useState<CashSession | null>(null);
   
@@ -35,9 +34,7 @@ export default function PDV() {
 
   const loadData = async () => {
     const { data: prods } = await supabase.from('produtos').select('*');
-    const { data: clis } = await supabase.from('clientes').select('*');
     if (prods) setProducts(prods as any);
-    if (clis) setClients(clis as any);
   };
 
   const checkSession = async () => {
