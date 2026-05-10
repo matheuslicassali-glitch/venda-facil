@@ -1,5 +1,5 @@
 -- ================================================================
--- SUPER FIX V2: ALINHAMENTO TOTAL DE TABELAS E PERMISSÕES
+-- SUPER FIX V3: SUPORTE TOTAL PDV ONLINE + CAIXA
 -- Execute este script no SQL Editor do Supabase
 -- ================================================================
 
@@ -207,7 +207,24 @@ ALTER TABLE caixa_sessoes ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "public_access_caixa" ON caixa_sessoes;
 CREATE POLICY "public_access_caixa" ON caixa_sessoes FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 
--- 9. EMPRESA CONFIGURACOES
+-- 9. CAIXA MOVIMENTAÇÕES
+CREATE TABLE IF NOT EXISTS caixa_movimentacoes (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    sincronizado BOOLEAN DEFAULT FALSE,
+    ultima_sincronizacao TIMESTAMPTZ,
+    caixa_id UUID REFERENCES caixa_sessoes(id) ON DELETE CASCADE,
+    tipo TEXT NOT NULL, -- 'sangria', 'suprimento'
+    valor NUMERIC(15,2) NOT NULL DEFAULT 0,
+    motivo TEXT,
+    data TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE caixa_movimentacoes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "public_access_movimentacoes" ON caixa_movimentacoes;
+CREATE POLICY "public_access_movimentacoes" ON caixa_movimentacoes FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+-- 10. EMPRESA CONFIGURACOES
 CREATE TABLE IF NOT EXISTS empresa_configuracoes (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -246,7 +263,8 @@ ALTER TABLE empresa_configuracoes ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "public_access_config" ON empresa_configuracoes;
 CREATE POLICY "public_access_config" ON empresa_configuracoes FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 
--- 10. POLÍTICAS DE ACESSO PARA VISUALIZAÇÃO ONLINE (ANON KEY)
--- Garante que o painel online consiga ler tudo
-GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon;
-GRANT SELECT ON ALL TABLES IN SCHEMA public TO authenticated;
+-- 11. PERMISSÕES FINAIS
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO authenticated;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO authenticated;
