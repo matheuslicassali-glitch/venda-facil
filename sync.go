@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // SyncManager gerencia a sincronização com o Supabase
@@ -130,7 +131,7 @@ func (sm *SyncManager) EnviarParaSupabase(payload *SyncPayload) error {
 			return nil // Nada para enviar nesta tabela
 		}
 
-		endpoint := fmt.Sprintf("%s/rest/v1/%s", sm.SupabaseURL, tabela)
+		endpoint := fmt.Sprintf("%s/rest/v1/%s?on_conflict=id", sm.SupabaseURL, tabela)
 		req, err := http.NewRequest("POST", endpoint, bytes.NewBuffer(b))
 		if err != nil {
 			return err
@@ -139,7 +140,7 @@ func (sm *SyncManager) EnviarParaSupabase(payload *SyncPayload) error {
 		req.Header.Set("apikey", sm.SupabaseAPIKey)
 		req.Header.Set("Authorization", "Bearer "+sm.SupabaseAPIKey)
 		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Prefer", "resolution=merge-duplicates") // Faz o Upsert
+		req.Header.Set("Prefer", "resolution=merge-duplicates") // Faz o Upsert com PostgREST
 
 		client := &http.Client{Timeout: 15 * time.Second}
 		resp, err := client.Do(req)
@@ -198,19 +199,24 @@ func (sm *SyncManager) MarcarComoSincronizado(payload *SyncPayload) error {
 	now := time.Now()
 	
 	for _, p := range payload.Produtos {
-		sm.DB.Model(&Produto{}).Where("id = ?", p.ID).Updates(map[string]interface{}{"sincronizado": true, "ultima_sincronizacao": now})
+		sm.DB.Model(&Produto{}).Where("id = ?", p.ID).UpdateColumn("sincronizado", true)
+		sm.DB.Model(&Produto{}).Where("id = ?", p.ID).UpdateColumn("ultima_sincronizacao", now)
 	}
 	for _, c := range payload.Clientes {
-		sm.DB.Model(&Cliente{}).Where("id = ?", c.ID).Updates(map[string]interface{}{"sincronizado": true, "ultima_sincronizacao": now})
+		sm.DB.Model(&Cliente{}).Where("id = ?", c.ID).UpdateColumn("sincronizado", true)
+		sm.DB.Model(&Cliente{}).Where("id = ?", c.ID).UpdateColumn("ultima_sincronizacao", now)
 	}
 	for _, f := range payload.Funcionarios {
-		sm.DB.Model(&Funcionario{}).Where("id = ?", f.ID).Updates(map[string]interface{}{"sincronizado": true, "ultima_sincronizacao": now})
+		sm.DB.Model(&Funcionario{}).Where("id = ?", f.ID).UpdateColumn("sincronizado", true)
+		sm.DB.Model(&Funcionario{}).Where("id = ?", f.ID).UpdateColumn("ultima_sincronizacao", now)
 	}
 	for _, v := range payload.Vendas {
-		sm.DB.Model(&Venda{}).Where("id = ?", v.ID).Updates(map[string]interface{}{"sincronizado": true, "ultima_sincronizacao": now})
+		sm.DB.Model(&Venda{}).Where("id = ?", v.ID).UpdateColumn("sincronizado", true)
+		sm.DB.Model(&Venda{}).Where("id = ?", v.ID).UpdateColumn("ultima_sincronizacao", now)
 	}
 	for _, i := range payload.ItensVenda {
-		sm.DB.Model(&ItemVenda{}).Where("id = ?", i.ID).Updates(map[string]interface{}{"sincronizado": true, "ultima_sincronizacao": now})
+		sm.DB.Model(&ItemVenda{}).Where("id = ?", i.ID).UpdateColumn("sincronizado", true)
+		sm.DB.Model(&ItemVenda{}).Where("id = ?", i.ID).UpdateColumn("ultima_sincronizacao", now)
 	}
 
 	return nil
@@ -249,7 +255,9 @@ func (sm *SyncManager) ReceberDoSupabase() error {
 	if err := buscarTabela("produtos", maxDataProd, &produtosNuvem); err == nil && len(produtosNuvem) > 0 {
 		for _, p := range produtosNuvem {
 			p.Sincronizado = true
-			sm.DB.Save(&p)
+			sm.DB.Clauses(clause.OnConflict{
+				UpdateAll: true,
+			}).Save(&p)
 		}
 		log.Printf("[SYNC-PULL] %d produtos atualizados da nuvem.\n", len(produtosNuvem))
 	}
@@ -261,7 +269,9 @@ func (sm *SyncManager) ReceberDoSupabase() error {
 	if err := buscarTabela("clientes", maxDataCli, &clientesNuvem); err == nil && len(clientesNuvem) > 0 {
 		for _, c := range clientesNuvem {
 			c.Sincronizado = true
-			sm.DB.Save(&c)
+			sm.DB.Clauses(clause.OnConflict{
+				UpdateAll: true,
+			}).Save(&c)
 		}
 		log.Printf("[SYNC-PULL] %d clientes atualizados da nuvem.\n", len(clientesNuvem))
 	}
@@ -273,7 +283,9 @@ func (sm *SyncManager) ReceberDoSupabase() error {
 	if err := buscarTabela("funcionarios", maxDataFunc, &funcNuvem); err == nil && len(funcNuvem) > 0 {
 		for _, f := range funcNuvem {
 			f.Sincronizado = true
-			sm.DB.Save(&f)
+			sm.DB.Clauses(clause.OnConflict{
+				UpdateAll: true,
+			}).Save(&f)
 		}
 		log.Printf("[SYNC-PULL] %d funcionarios atualizados da nuvem.\n", len(funcNuvem))
 	}

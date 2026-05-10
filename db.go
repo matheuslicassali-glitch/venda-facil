@@ -75,9 +75,6 @@ func ConectarBanco() {
 	}
 
 	fmt.Println("Conectado ao banco de Dados com sucesso!")
-
-	// Iniciar rotina de sincronização em background com o Supabase
-	IniciarSyncBackground(DB)
 }
 
 func sPtr(s string) *string { return &s }

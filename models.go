@@ -21,6 +21,14 @@ func (b *Base) BeforeCreate(tx *gorm.DB) error {
 	if b.ID == uuid.Nil {
 		b.ID = uuid.New()
 	}
+	b.Sincronizado = false
+	return nil
+}
+
+func (b *Base) BeforeUpdate(tx *gorm.DB) error {
+	// Sempre que houver um update, marca como não sincronizado
+	// Exceto se a própria sincronização estiver salvando o registro
+	b.Sincronizado = false
 	return nil
 }
 
