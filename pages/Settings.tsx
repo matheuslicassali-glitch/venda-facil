@@ -6,6 +6,8 @@ import { Input } from '../components/ui/Input';
 import { db } from '../utils/databaseService';
 import { CompanySettings, Permission } from '../types';
 import { formatCNPJ, formatCEP, formatPhone } from '../utils/validation';
+import { ForcarSincronizacao, ObterEstatisticasSync } from '../wailsjs/go/main/App';
+import { Cloud, CloudSync, RefreshCw, CheckCircle2 } from 'lucide-react';
 
 interface SettingsProps {
     onNotify: (msg: string, type: 'success' | 'error') => void;
@@ -44,11 +46,34 @@ const Settings: React.FC<SettingsProps> = ({ onNotify, currentUser }) => {
         }
     });
 
+    const [syncStats, setSyncStats] = useState<any>(null);
+    const [syncing, setSyncing] = useState(false);
+
     const isSuperAdmin = currentUser?.cargo === 'Administrador';
 
     useEffect(() => {
         loadSettings();
+        loadSyncStats();
     }, []);
+
+    const loadSyncStats = async () => {
+        try {
+            const stats = await ObterEstatisticasSync();
+            setSyncStats(stats);
+        } catch (e) {}
+    };
+
+    const handleManualSync = async () => {
+        setSyncing(true);
+        try {
+            const result = await ForcarSincronizacao();
+            onNotify(result, result.includes('Erro') ? 'error' : 'success');
+            loadSyncStats();
+        } catch (e) {
+            onNotify('❌ Falha ao comunicar com o serviço de sincronização.', 'error');
+        }
+        setSyncing(false);
+    };
 
     const loadSettings = async () => {
         setLoading(true);
@@ -375,6 +400,91 @@ const Settings: React.FC<SettingsProps> = ({ onNotify, currentUser }) => {
                              <p className="text-[10px] font-bold text-red-700 uppercase leading-relaxed">
                                 ⚠️ ATENÇÃO: A Senha Master e o E-mail Master são as únicas chaves para desbloquear o sistema caso ele seja bloqueado por validade ou manualmente. Guarde-os com segurança.
                              </p>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Nuvem e Sincronização */}
+                <section className="bg-card text-card-foreground rounded-3xl shadow-sm border border-border overflow-hidden">
+                    <div className="p-5 border-b border-border bg-muted text-muted-foreground/50 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <Cloud className="text-blue-600" size={20} />
+                            <h2 className="font-black text-gray-700 uppercase tracking-widest text-[10px]">Nuvem e Sincronização Híbrida</h2>
+                        </div>
+                        <div className="flex items-center gap-2">
+                             <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                             <span className="text-[9px] font-black uppercase text-emerald-600">Serviço Ativo</span>
+                        </div>
+                    </div>
+                    <div className="p-8">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Produtos</p>
+                                <div className="flex items-end justify-between">
+                                    <h3 className="text-xl font-black text-slate-800">{syncStats?.produtos_sync || 0}<span className="text-xs text-slate-400 font-bold">/{syncStats?.produtos_total || 0}</span></h3>
+                                </div>
+                            </div>
+                            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Clientes</p>
+                                <div className="flex items-end justify-between">
+                                    <h3 className="text-xl font-black text-slate-800">{syncStats?.clientes_sync || 0}<span className="text-xs text-slate-400 font-bold">/{syncStats?.clientes_total || 0}</span></h3>
+                                </div>
+                            </div>
+                            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Vendas</p>
+                                <div className="flex items-end justify-between">
+                                    <h3 className="text-xl font-black text-slate-800">{syncStats?.vendas_sync || 0}<span className="text-xs text-slate-400 font-bold">/{syncStats?.vendas_total || 0}</span></h3>
+                                </div>
+                            </div>
+                            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Financeiro</p>
+                                <div className="flex items-end justify-between">
+                                    <h3 className="text-xl font-black text-slate-800">{syncStats?.financeiro_sync || 0}<span className="text-xs text-slate-400 font-bold">/{syncStats?.financeiro_total || 0}</span></h3>
+                                </div>
+                            </div>
+                            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Fornecedores</p>
+                                <div className="flex items-end justify-between">
+                                    <h3 className="text-xl font-black text-slate-800">{syncStats?.fornecedores_sync || 0}<span className="text-xs text-slate-400 font-bold">/{syncStats?.fornecedores_total || 0}</span></h3>
+                                </div>
+                            </div>
+                            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Funcionários</p>
+                                <div className="flex items-end justify-between">
+                                    <h3 className="text-xl font-black text-slate-800">{syncStats?.funcionarios_sync || 0}<span className="text-xs text-slate-400 font-bold">/{syncStats?.funcionarios_total || 0}</span></h3>
+                                </div>
+                            </div>
+                            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Caixa</p>
+                                <div className="flex items-end justify-between">
+                                    <h3 className="text-xl font-black text-slate-800">{syncStats?.caixa_sync || 0}<span className="text-xs text-slate-400 font-bold">/{syncStats?.caixa_total || 0}</span></h3>
+                                </div>
+                            </div>
+                            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Configurações</p>
+                                <div className="flex items-end justify-between">
+                                    <h3 className="text-xl font-black text-slate-800">{syncStats?.configuracoes_sync || 0 ? 1 : 0}<span className="text-xs text-slate-400 font-bold">/1</span></h3>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col md:flex-row items-center gap-6 bg-blue-50 p-6 rounded-3xl border border-blue-100">
+                            <div className="w-14 h-14 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-200">
+                                <CloudSync size={28} />
+                            </div>
+                            <div className="flex-1 text-center md:text-left">
+                                <h4 className="font-black text-blue-900 uppercase text-xs tracking-tight">Sincronização em Tempo Real</h4>
+                                <p className="text-blue-700 text-xs mt-1">Seu sistema envia dados para a nuvem automaticamente. Se precisar forçar uma atualização agora, clique no botão ao lado.</p>
+                            </div>
+                            <Button 
+                                type="button"
+                                onClick={handleManualSync}
+                                disabled={syncing}
+                                className="bg-blue-700 hover:bg-blue-800 text-white font-black uppercase text-[10px] h-12 px-8 rounded-xl shadow-lg shadow-blue-100 flex items-center gap-2"
+                            >
+                                {syncing ? <RefreshCw className="animate-spin" size={16} /> : <CheckCircle2 size={16} />}
+                                {syncing ? 'Processando...' : 'Sincronizar Agora'}
+                            </Button>
                         </div>
                     </div>
                 </section>

@@ -21,13 +21,20 @@ type SyncManager struct {
 	SupabaseAPIKey string
 }
 
+var GlobalSyncManager *SyncManager
+
 // SyncPayload estrutura para o pacote JSON de sincronização
 type SyncPayload struct {
-	Produtos     []Produto     `json:"produtos"`
-	Clientes     []Cliente     `json:"clientes"`
-	Funcionarios []Funcionario `json:"funcionarios"`
-	Vendas       []Venda       `json:"vendas"`
-	ItensVenda   []ItemVenda   `json:"itens_venda"`
+	Produtos           []Produto             `json:"produtos"`
+	Clientes           []Cliente             `json:"clientes"`
+	Funcionarios       []Funcionario         `json:"funcionarios"`
+	Vendas             []Venda               `json:"vendas"`
+	ItensVenda         []ItemVenda           `json:"itens_venda"`
+	Fornecedores       []Fornecedor          `json:"fornecedores"`
+	Financeiro         []ContaFinanceira     `json:"financeiro"`
+	CaixaSessoes       []SessaoCaixa         `json:"caixa_sessoes"`
+	CaixaMovimentacoes []MovimentacaoCaixa   `json:"caixa_movimentacoes"`
+	Configuracoes      []ConfiguracaoEmpresa `json:"configuracoes"`
 }
 
 // Credenciais do Supabase (hardcoded para garantir funcionamento)
@@ -48,11 +55,12 @@ func NewSyncManager(db *gorm.DB) *SyncManager {
 		key = supabaseKeyConst
 	}
 
-	return &SyncManager{
+	GlobalSyncManager = &SyncManager{
 		DB:             db,
 		SupabaseURL:    url,
 		SupabaseAPIKey: key,
 	}
+	return GlobalSyncManager
 }
 
 // ExecutarSincronizacao roda o fluxo completo de sincronização
@@ -77,7 +85,8 @@ func (sm *SyncManager) ExecutarSincronizacao() error {
 	}
 
 	// Se não houver nada para sincronizar, encerra
-	total := len(payload.Produtos) + len(payload.Clientes) + len(payload.Funcionarios) + len(payload.Vendas) + len(payload.ItensVenda)
+	total := len(payload.Produtos) + len(payload.Clientes) + len(payload.Funcionarios) + len(payload.Vendas) + len(payload.ItensVenda) +
+		len(payload.Fornecedores) + len(payload.Financeiro) + len(payload.CaixaSessoes) + len(payload.CaixaMovimentacoes) + len(payload.Configuracoes)
 	if total == 0 {
 		log.Println("[SYNC] Nenhum dado novo para sincronizar.")
 		return nil
@@ -111,9 +120,12 @@ func (sm *SyncManager) ExtrairDadosNaoSincronizados() (*SyncPayload, error) {
 	sm.DB.Where("sincronizado = ? OR sincronizado IS NULL", false).Find(&payload.Clientes)
 	sm.DB.Where("sincronizado = ? OR sincronizado IS NULL", false).Find(&payload.Funcionarios)
 	sm.DB.Where("sincronizado = ? OR sincronizado IS NULL", false).Preload("Items").Find(&payload.Vendas)
-	// Os itens de venda geralmente são enviados junto com a venda (via RPC) ou separadamente.
-	// Por simplicidade, extraímos os itens não sincronizados também.
 	sm.DB.Where("sincronizado = ? OR sincronizado IS NULL", false).Find(&payload.ItensVenda)
+	sm.DB.Where("sincronizado = ? OR sincronizado IS NULL", false).Find(&payload.Fornecedores)
+	sm.DB.Where("sincronizado = ? OR sincronizado IS NULL", false).Find(&payload.Financeiro)
+	sm.DB.Where("sincronizado = ? OR sincronizado IS NULL", false).Find(&payload.CaixaSessoes)
+	sm.DB.Where("sincronizado = ? OR sincronizado IS NULL", false).Find(&payload.CaixaMovimentacoes)
+	sm.DB.Where("sincronizado = ? OR sincronizado IS NULL", false).Find(&payload.Configuracoes)
 
 	return &payload, nil
 }
@@ -190,6 +202,31 @@ func (sm *SyncManager) EnviarParaSupabase(payload *SyncPayload) error {
 			log.Printf("[SYNC ERROR] Itens de Venda: %v\n", err)
 		}
 	}
+	if len(payload.Fornecedores) > 0 {
+		if err := enviarTabela("fornecedores", payload.Fornecedores); err != nil {
+			log.Printf("[SYNC ERROR] Fornecedores: %v\n", err)
+		}
+	}
+	if len(payload.Financeiro) > 0 {
+		if err := enviarTabela("financeiro_contas", payload.Financeiro); err != nil {
+			log.Printf("[SYNC ERROR] Financeiro: %v\n", err)
+		}
+	}
+	if len(payload.CaixaSessoes) > 0 {
+		if err := enviarTabela("caixa_sessoes", payload.CaixaSessoes); err != nil {
+			log.Printf("[SYNC ERROR] Caixa Sessoes: %v\n", err)
+		}
+	}
+	if len(payload.CaixaMovimentacoes) > 0 {
+		if err := enviarTabela("caixa_movimentacoes", payload.CaixaMovimentacoes); err != nil {
+			log.Printf("[SYNC ERROR] Caixa Movimentacoes: %v\n", err)
+		}
+	}
+	if len(payload.Configuracoes) > 0 {
+		if err := enviarTabela("empresa_configuracoes", payload.Configuracoes); err != nil {
+			log.Printf("[SYNC ERROR] Configurações: %v\n", err)
+		}
+	}
 
 	return nil
 }
@@ -217,6 +254,26 @@ func (sm *SyncManager) MarcarComoSincronizado(payload *SyncPayload) error {
 	for _, i := range payload.ItensVenda {
 		sm.DB.Model(&ItemVenda{}).Where("id = ?", i.ID).UpdateColumn("sincronizado", true)
 		sm.DB.Model(&ItemVenda{}).Where("id = ?", i.ID).UpdateColumn("ultima_sincronizacao", now)
+	}
+	for _, f := range payload.Fornecedores {
+		sm.DB.Model(&Fornecedor{}).Where("id = ?", f.ID).UpdateColumn("sincronizado", true)
+		sm.DB.Model(&Fornecedor{}).Where("id = ?", f.ID).UpdateColumn("ultima_sincronizacao", now)
+	}
+	for _, fi := range payload.Financeiro {
+		sm.DB.Model(&ContaFinanceira{}).Where("id = ?", fi.ID).UpdateColumn("sincronizado", true)
+		sm.DB.Model(&ContaFinanceira{}).Where("id = ?", fi.ID).UpdateColumn("ultima_sincronizacao", now)
+	}
+	for _, s := range payload.CaixaSessoes {
+		sm.DB.Model(&SessaoCaixa{}).Where("id = ?", s.ID).UpdateColumn("sincronizado", true)
+		sm.DB.Model(&SessaoCaixa{}).Where("id = ?", s.ID).UpdateColumn("ultima_sincronizacao", now)
+	}
+	for _, m := range payload.CaixaMovimentacoes {
+		sm.DB.Model(&MovimentacaoCaixa{}).Where("id = ?", m.ID).UpdateColumn("sincronizado", true)
+		sm.DB.Model(&MovimentacaoCaixa{}).Where("id = ?", m.ID).UpdateColumn("ultima_sincronizacao", now)
+	}
+	for _, conf := range payload.Configuracoes {
+		sm.DB.Model(&ConfiguracaoEmpresa{}).Where("id = ?", conf.ID).UpdateColumn("sincronizado", true)
+		sm.DB.Model(&ConfiguracaoEmpresa{}).Where("id = ?", conf.ID).UpdateColumn("ultima_sincronizacao", now)
 	}
 
 	return nil
