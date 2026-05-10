@@ -8,6 +8,13 @@ import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import type { Product, SaleItem, CashSession } from '../types';
 
+function uuidv4() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
 export default function PDV() {
   // Dados
   const [products, setProducts] = useState<Product[]>([]);
@@ -65,7 +72,7 @@ export default function PDV() {
       ));
     } else {
       setCart([...cart, {
-        id: Math.random().toString(36).substring(2, 11),
+        id: uuidv4(),
         produto_id: product.id,
         nome: product.nome,
         quantidade: 1,
@@ -98,7 +105,7 @@ export default function PDV() {
   const finalizeSale = async () => {
     setLoading(true);
     try {
-      const saleId = Math.random().toString(36).substring(2, 11);
+      const saleId = uuidv4();
       const saleData = {
         id: saleId,
         data_venda: new Date().toISOString(),
@@ -117,7 +124,7 @@ export default function PDV() {
 
       // Itens da venda
       const itemsData = cart.map(item => ({
-        id: Math.random().toString(36).substring(2, 11),
+        id: uuidv4(),
         venda_id: saleId,
         produto_id: item.produto_id,
         nome: item.nome,
