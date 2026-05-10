@@ -6,7 +6,7 @@ import {
 import { supabase } from '../lib/supabase';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
-import { Product, SaleItem, CashSession } from '../types';
+import type { Product, SaleItem, CashSession } from '../types';
 
 export default function PDV() {
   // Dados
@@ -14,7 +14,7 @@ export default function PDV() {
   const [cart, setCart] = useState<SaleItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [foundProducts, setFoundProducts] = useState<Product[]>([]);
-  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [selectedClient, setSelectedClient] = useState<any>(null);
   const [session, setSession] = useState<CashSession | null>(null);
   
   // UI
@@ -109,7 +109,7 @@ export default function PDV() {
         cliente_id: selectedClient?.id,
         status: 'concluida',
         fiscal_status: 'pendente',
-        sincronizado: true // Já está na nuvem
+        sincronizado: true 
       };
 
       const { error: saleErr } = await supabase.from('vendas').insert(saleData);
@@ -130,7 +130,7 @@ export default function PDV() {
       const { error: itemsErr } = await supabase.from('venda_itens').insert(itemsData);
       if (itemsErr) throw itemsErr;
 
-      // Baixa de estoque (simplificada no online)
+      // Baixa de estoque
       for (const item of cart) {
         const prod = products.find(p => p.id === item.produto_id);
         if (prod) {
@@ -166,7 +166,6 @@ export default function PDV() {
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">
       <div className="flex-1 flex flex-col p-6 overflow-hidden">
-        {/* Header de Busca */}
         <div className="flex gap-4 mb-6">
           <div className="flex-1 relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
@@ -197,7 +196,6 @@ export default function PDV() {
           </Button>
         </div>
 
-        {/* Lista de Pedido */}
         <div className="flex-1 bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden flex flex-col">
           <div className="px-6 py-4 border-b border-slate-50 bg-slate-50/30 flex justify-between items-center">
             <h3 className="font-bold text-slate-700 flex items-center gap-2"><ShoppingCart size={18} /> Pedido Atual</h3>
@@ -230,7 +228,6 @@ export default function PDV() {
         </div>
       </div>
 
-      {/* Barra Lateral Direita */}
       <div className="w-96 bg-white border-l border-slate-200 p-8 flex flex-col shadow-2xl relative z-10">
         <div className="mb-8">
           <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Cliente</h4>
@@ -276,7 +273,6 @@ export default function PDV() {
         </div>
       </div>
 
-      {/* Modais */}
       <Modal isOpen={isPaymentModalOpen} onClose={() => setIsPaymentModalOpen(false)} title="Finalizar Pagamento" maxWidth="max-w-md">
         <div className="space-y-6">
           <div className="grid grid-cols-2 gap-4">
