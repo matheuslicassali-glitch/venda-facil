@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { ShoppingCart, Users, Package, BarChart3, CloudSync, LayoutDashboard, Search, Bell, Settings } from 'lucide-react';
 
 function App() {
