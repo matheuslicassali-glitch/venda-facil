@@ -9,6 +9,8 @@ import Financeiro from './pages/Financeiro';
 import Fornecedores from './pages/Fornecedores';
 import Relatorios from './pages/Relatorios';
 import Sincronizacao from './pages/Sincronizacao';
+import PDV from './pages/PDV';
+import Caixa from './pages/Caixa';
 
 function Layout() {
   const location = useLocation();
@@ -23,6 +25,8 @@ function Layout() {
     { to: '/financeiro', icon: <DollarSign size={18} />, text: 'Financeiro' },
     { to: '/fornecedores', icon: <Truck size={18} />, text: 'Fornecedores' },
     { to: '/relatorios', icon: <BarChart3 size={18} />, text: 'Relatórios' },
+    { to: '/pdv', icon: <ShoppingCart size={18} />, text: 'PDV (Frente Loja)' },
+    { to: '/caixa', icon: <Package size={18} />, text: 'Caixa' },
     { to: '/sincronizacao', icon: <CloudSync size={18} />, text: 'Sincronização' },
   ];
 
@@ -76,6 +80,8 @@ function Layout() {
             <Route path="/financeiro" element={<Financeiro />} />
             <Route path="/fornecedores" element={<Fornecedores />} />
             <Route path="/relatorios" element={<Relatorios />} />
+            <Route path="/pdv" element={<PDV />} />
+            <Route path="/caixa" element={<Caixa />} />
             <Route path="/sincronizacao" element={<Sincronizacao />} />
           </Routes>
         </div>
