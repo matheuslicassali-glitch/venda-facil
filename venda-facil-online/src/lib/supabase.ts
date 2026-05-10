@@ -1,7 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://axupinryubgmokupryne.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_Yy8ThifMyJXOLAoXEpGlVQ_wr1UpWu8';
+// Forçamos a URL correta para evitar conflitos com variáveis de ambiente antigas no Vercel
+const supabaseUrl = 'https://axupinryubgmokupryne.supabase.co';
+const supabaseAnonKey = 'sb_publishable_Yy8ThifMyJXOLAoXEpGlVQ_wr1UpWu8';
 
 console.log('Supabase Initializing with:', { url: supabaseUrl, key: supabaseAnonKey ? 'Present' : 'Missing' });
 
