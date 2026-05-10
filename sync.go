@@ -29,11 +29,23 @@ type SyncPayload struct {
 	ItensVenda   []ItemVenda   `json:"itens_venda"`
 }
 
+// Credenciais do Supabase (hardcoded para garantir funcionamento)
+const (
+	supabaseURLConst = "https://axupinryubgmokupryne.supabase.co"
+	supabaseKeyConst = "sb_publishable_Yy8ThifMyJXOLAoXEpGlVQ_wr1UpWu8"
+)
+
 // NewSyncManager inicializa o gerenciador de sincronização
 func NewSyncManager(db *gorm.DB) *SyncManager {
-	// Pega as variáveis de ambiente (podem ser configuradas via .env)
+	// Usa variável de ambiente se disponível, senão usa as constantes hardcoded
 	url := os.Getenv("SUPABASE_URL")
 	key := os.Getenv("SUPABASE_KEY")
+	if url == "" {
+		url = supabaseURLConst
+	}
+	if key == "" {
+		key = supabaseKeyConst
+	}
 
 	return &SyncManager{
 		DB:             db,
@@ -273,9 +285,14 @@ func (sm *SyncManager) ReceberDoSupabase() error {
 func IniciarSyncBackground(db *gorm.DB) {
 	go func() {
 		sm := NewSyncManager(db)
+		// Sync imediato ao iniciar
+		go func() {
+			time.Sleep(10 * time.Second) // Aguarda 10s para o banco local carregar
+			sm.ExecutarSincronizacao()
+		}()
 		for {
-			// Aguarda 1 minuto entre tentativas
-			time.Sleep(1 * time.Minute)
+			// Aguarda 30 segundos entre tentativas
+			time.Sleep(30 * time.Second)
 			sm.ExecutarSincronizacao()
 		}
 	}()

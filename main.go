@@ -40,17 +40,19 @@ func main() {
 	// Busca o serial da configuração da empresa
 	var config ConfiguracaoEmpresa
 	DB.First(&config)
-	status, err := VerificarLicencaOnline(config.SerialChave)
+	var err error
+	var licStatus *LicencaStatus
+	licStatus, err = VerificarLicencaOnline(config.SerialChave)
 	if err != nil {
 		log.Println("[LICENÇA] Erro ao verificar:", err)
-	} else if status != nil {
-		switch status.Status {
+	} else if licStatus != nil {
+		switch licStatus.Status {
 		case "bloqueado":
-			log.Fatal("[LICENÇA] SISTEMA BLOQUEADO. Motivo: " + status.MotivoBloqueio + ". Contate o suporte.")
+			log.Fatal("[LICENÇA] SISTEMA BLOQUEADO. Motivo: " + licStatus.MotivoBloqueio + ". Contate o suporte.")
 		case "expirado":
 			log.Fatal("[LICENÇA] LICENÇA EXPIRADA. Entre em contato para renovar.")
 		default:
-			log.Printf("[LICENÇA] ✅ Licença ATIVA - %s\n", status.NomeEmpresa)
+			log.Printf("[LICENÇA] ✅ Licença ATIVA - %s\n", licStatus.NomeEmpresa)
 		}
 	}
 	// ────────────────────────────────────────────────────────────────────
@@ -70,11 +72,14 @@ func main() {
 		}
 	}()
 
+	// Iniciar Sincronização em Background (Desktop -> Supabase)
+	IniciarSyncBackground(DB)
+
 	// Create an instance of the app structure
 	app := NewApp()
 
 	// Create application with options
-	err := wails.Run(&options.App{
+	err = wails.Run(&options.App{
 		Title:            "Venda Fácil Professional",
 		Width:            1280,
 		Height:           800,
