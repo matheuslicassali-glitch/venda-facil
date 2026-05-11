@@ -22,12 +22,14 @@ export default function PDV() {
   const [searchTerm, setSearchTerm] = useState('');
   const [foundProducts, setFoundProducts] = useState<Product[]>([]);
   const [selectedClient, setSelectedClient] = useState<any>(null);
+  const [clients, setClients] = useState<any[]>([]);
   const [session, setSession] = useState<CashSession | null>(null);
   
   // UI
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isCatalogModalOpen, setIsCatalogModalOpen] = useState(false);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+  const [isClientModalOpen, setIsClientModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('dinheiro');
   const [discount, setDiscount] = useState(0);
@@ -37,11 +39,27 @@ export default function PDV() {
   useEffect(() => {
     loadData();
     checkSession();
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setFoundProducts([]);
+        setIsCatalogModalOpen(false);
+        setIsPaymentModalOpen(false);
+      }
+      if (e.key === 'F2') {
+        searchInputRef.current?.focus();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   const loadData = async () => {
     const { data: prods } = await supabase.from('produtos').select('*');
+    const { data: clis } = await supabase.from('clientes').select('*');
     if (prods) setProducts(prods as any);
+    if (clis) setClients(clis as any);
   };
 
   const checkSession = async () => {
@@ -185,16 +203,34 @@ export default function PDV() {
               onChange={e => handleSearch(e.target.value)}
             />
             {foundProducts.length > 0 && (
-              <div className="absolute top-16 left-0 w-full bg-white rounded-2xl shadow-2xl border border-slate-100 z-50 overflow-hidden">
-                {foundProducts.map(p => (
-                  <button key={p.id} onClick={() => addToCart(p)} className="w-full flex items-center gap-4 p-4 hover:bg-slate-50 text-left transition-all border-b border-slate-50 last:border-0">
-                    <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center text-slate-500"><Package size={18} /></div>
-                    <div className="flex-1">
-                      <p className="font-bold text-slate-800 text-sm">{p.nome}</p>
-                      <p className="text-xs text-primary-600 font-bold">R$ {p.preco_venda.toFixed(2)}</p>
-                    </div>
-                  </button>
-                ))}
+              <div className="absolute top-16 left-0 w-full bg-white rounded-2xl shadow-2xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="p-3 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{foundProducts.length} Produtos Encontrados</span>
+                  <kbd className="text-[10px] bg-white px-1.5 py-0.5 rounded border border-slate-200 text-slate-400 font-mono shadow-sm">ESC para fechar</kbd>
+                </div>
+                <div className="max-h-96 overflow-y-auto">
+                  {foundProducts.map(p => (
+                    <button 
+                      key={p.id} 
+                      onClick={() => addToCart(p)} 
+                      className="w-full flex items-center gap-4 p-4 hover:bg-primary-50/50 text-left transition-all border-b border-slate-50 last:border-0 group"
+                    >
+                      <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 group-hover:bg-white group-hover:text-primary-500 transition-all shadow-sm">
+                        <Package size={20} />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-bold text-slate-800 text-sm group-hover:text-primary-700 transition-colors">{p.nome}</p>
+                        <p className="text-[10px] text-slate-400 font-medium">SKU: {p.sku}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-black text-primary-600">R$ {p.preco_venda.toFixed(2)}</p>
+                        <p className={`text-[10px] font-bold ${p.estoque_atual <= 0 ? 'text-red-400' : 'text-emerald-500'}`}>
+                          {p.estoque_atual} {p.unidade} em estoque
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -242,7 +278,12 @@ export default function PDV() {
             <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-slate-300 shadow-sm"><User size={20}/></div>
             <div className="flex-1 overflow-hidden">
               <p className="font-bold text-slate-800 text-sm truncate">{selectedClient?.nome || 'Consumidor Final'}</p>
-              <button className="text-[10px] text-primary-600 font-bold uppercase tracking-tight hover:underline">Vincular Cliente</button>
+              <button 
+                onClick={() => setIsClientModalOpen(true)}
+                className="text-[10px] text-primary-600 font-bold uppercase tracking-tight hover:underline"
+              >
+                Vincular Cliente
+              </button>
             </div>
           </div>
         </div>
@@ -321,14 +362,52 @@ export default function PDV() {
         </div>
       </Modal>
 
+      <Modal isOpen={isClientModalOpen} onClose={() => setIsClientModalOpen(false)} title="👤 Vincular Cliente">
+        <div className="space-y-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <input 
+              type="text" 
+              placeholder="Buscar cliente..."
+              className="w-full h-10 bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
+            />
+          </div>
+          <div className="max-h-64 overflow-y-auto space-y-2">
+            <button 
+              onClick={() => { setSelectedClient(null); setIsClientModalOpen(false); }}
+              className="w-full p-4 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between hover:bg-white hover:border-primary-300 transition-all"
+            >
+              <span className="font-bold text-slate-700 text-sm">Consumidor Final</span>
+              <span className="text-[10px] bg-slate-200 text-slate-500 px-2 py-0.5 rounded-full font-black uppercase">Default</span>
+            </button>
+            {clients.map(c => (
+              <button 
+                key={c.id} 
+                onClick={() => { setSelectedClient(c); setIsClientModalOpen(false); }}
+                className="w-full p-4 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between hover:bg-white hover:border-primary-300 transition-all"
+              >
+                <div className="text-left">
+                  <p className="font-bold text-slate-700 text-sm">{c.nome}</p>
+                  <p className="text-[10px] text-slate-400 font-mono">{c.documento}</p>
+                </div>
+                <Plus size={16} className="text-primary-500" />
+              </button>
+            ))}
+          </div>
+        </div>
+      </Modal>
+
       <Modal isOpen={isSuccessModalOpen} onClose={() => setIsSuccessModalOpen(false)} title="✅ Venda Concluída">
         <div className="flex flex-col items-center py-8 text-center">
-          <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-6">
+          <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-6 shadow-lg shadow-emerald-500/20">
             <CheckCircle2 size={40} />
           </div>
           <h3 className="text-xl font-bold text-slate-800 mb-2">Venda Finalizada com Sucesso!</h3>
-          <p className="text-slate-500 text-sm mb-8">A transação foi registrada na nuvem e o estoque atualizado.</p>
-          <Button variant="primary" className="w-full h-12" onClick={() => setIsSuccessModalOpen(false)}>Nova Venda</Button>
+          <p className="text-slate-500 text-sm mb-8 leading-relaxed">A transação foi registrada na nuvem, o estoque atualizado e o comprovante está pronto para impressão.</p>
+          <div className="flex gap-3 w-full">
+            <Button variant="secondary" className="flex-1" onClick={() => setIsSuccessModalOpen(false)}>Imprimir Cupom</Button>
+            <Button variant="primary" className="flex-1" onClick={() => setIsSuccessModalOpen(false)}>Nova Venda</Button>
+          </div>
         </div>
       </Modal>
     </div>
