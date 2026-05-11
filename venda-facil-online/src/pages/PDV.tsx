@@ -276,11 +276,12 @@ export default function PDV() {
         </div>
       </div>
 
-      <div className="w-96 bg-white border-l border-slate-200 p-8 flex flex-col shadow-2xl relative z-10 overflow-y-auto max-h-screen custom-scrollbar">
-        <div className="mb-8">
-          <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Cliente</h4>
-          <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-slate-300 shadow-sm"><User size={20}/></div>
+      <div className="w-96 bg-white border-l border-slate-200 flex flex-col shadow-2xl relative z-10 h-screen overflow-hidden">
+        {/* Top: Cliente (Fixo) */}
+        <div className="p-6 border-b border-slate-50 bg-slate-50/20">
+          <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Cliente</h4>
+          <div className="flex items-center gap-3 p-3 bg-white rounded-2xl border border-slate-100 shadow-sm">
+            <div className="w-10 h-10 bg-primary-50 rounded-xl flex items-center justify-center text-primary-500 shadow-sm"><User size={20}/></div>
             <div className="flex-1 overflow-hidden">
               <p className="font-bold text-slate-800 text-sm truncate">{selectedClient?.nome || 'Consumidor Final'}</p>
               <button 
@@ -293,7 +294,8 @@ export default function PDV() {
           </div>
         </div>
 
-        <div className="flex-1 flex flex-col justify-end gap-4 min-h-0">
+        {/* Middle: Totais e Ajustes (Scrollable) */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
           <div className="space-y-4">
             <div className="flex justify-between items-center text-slate-500 font-bold text-sm">
               <span>Subtotal</span>
@@ -305,7 +307,7 @@ export default function PDV() {
                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-tight">Desconto (R$)</label>
                 <input 
                   type="number" 
-                  className="w-full bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 text-sm font-bold text-red-500 outline-none focus:ring-1 focus:ring-red-200"
+                  className="w-full bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 text-sm font-bold text-red-500 outline-none focus:ring-1 focus:ring-red-200 transition-all"
                   value={discount}
                   onChange={e => setDiscount(Number(e.target.value))}
                 />
@@ -314,7 +316,7 @@ export default function PDV() {
                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-tight">Acréscimo (R$)</label>
                 <input 
                   type="number" 
-                  className="w-full bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 text-sm font-bold text-emerald-600 outline-none focus:ring-1 focus:ring-emerald-200"
+                  className="w-full bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 text-sm font-bold text-emerald-600 outline-none focus:ring-1 focus:ring-emerald-200 transition-all"
                   value={acrescimo}
                   onChange={e => setAcrescimo(Number(e.target.value))}
                 />
@@ -322,22 +324,36 @@ export default function PDV() {
             </div>
           </div>
 
-          <div className="pt-6 border-t border-slate-100">
+          <div className="bg-primary-50/50 p-4 rounded-2xl border border-primary-100/50">
+            <div className="flex items-center gap-2 mb-2">
+              <Package size={14} className="text-primary-500" />
+              <span className="text-[10px] font-black text-primary-700 uppercase tracking-widest">Resumo do Pedido</span>
+            </div>
+            <p className="text-xs text-slate-500 font-medium">
+              {cart.length} itens no carrinho. 
+              {cart.length === 0 && " Adicione produtos para liberar o pagamento."}
+            </p>
+          </div>
+        </div>
+
+        {/* Bottom: Total e Botão Finalizar (Fixo) */}
+        <div className="p-6 bg-slate-50/80 backdrop-blur-md border-t border-slate-200 space-y-4">
+          <div>
             <p className="text-[10px] font-black text-primary-600 uppercase tracking-widest mb-1">Total do Pedido</p>
-            <h2 className="text-4xl font-black text-slate-800 mb-6">
+            <h2 className="text-4xl font-black text-slate-800">
               <span className="text-lg font-normal text-slate-400 mr-2">R$</span>
               {total.toFixed(2).replace('.', ',')}
             </h2>
-            
-            <Button 
-              size="lg" 
-              className="w-full h-16 text-base shadow-xl hover:translate-y-[-2px] active:translate-y-0 transition-all" 
-              disabled={cart.length === 0}
-              onClick={() => setIsPaymentModalOpen(true)}
-            >
-              <CheckCircle2 className="mr-2" /> Finalizar Venda
-            </Button>
           </div>
+          
+          <Button 
+            size="lg" 
+            className={`w-full h-16 text-base font-black uppercase tracking-widest shadow-2xl transition-all ${cart.length > 0 ? 'hover:translate-y-[-2px] active:translate-y-0' : 'opacity-50 grayscale'}`}
+            disabled={cart.length === 0}
+            onClick={() => setIsPaymentModalOpen(true)}
+          >
+            <CheckCircle2 className="mr-2" /> {cart.length === 0 ? 'Carrinho Vazio' : 'Finalizar Venda'}
+          </Button>
         </div>
       </div>
 
