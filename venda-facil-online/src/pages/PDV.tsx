@@ -336,8 +336,8 @@ export default function PDV() {
           </div>
         </div>
 
-        {/* Bottom: Total e Botão Finalizar (Fixo) */}
-        <div className="p-6 bg-slate-50/80 backdrop-blur-md border-t border-slate-200 space-y-4">
+        {/* Bottom: Total e Botão Finalizar (Fixo - Movido para cima) */}
+        <div className="p-6 pb-16 bg-slate-50/80 backdrop-blur-md border-t border-slate-200 space-y-4">
           <div>
             <p className="text-[10px] font-black text-primary-600 uppercase tracking-widest mb-1">Total do Pedido</p>
             <h2 className="text-4xl font-black text-slate-800">
