@@ -33,6 +33,8 @@ export default function PDV() {
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('dinheiro');
   const [discount, setDiscount] = useState(0);
+  const [acrescimo, setAcrescimo] = useState(0);
+  const [installments, setInstallments] = useState(1);
   
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -118,7 +120,7 @@ export default function PDV() {
   };
 
   const subtotal = cart.reduce((acc, i) => acc + i.subtotal, 0);
-  const total = Math.max(0, subtotal - discount);
+  const total = Math.max(0, subtotal - discount + acrescimo);
 
   const finalizeSale = async () => {
     setLoading(true);
@@ -129,8 +131,9 @@ export default function PDV() {
         data_venda: new Date().toISOString(),
         valor_total: total,
         desconto_total: discount,
-        acrescimo_total: 0,
+        acrescimo_total: acrescimo,
         tipo_pagamento: paymentMethod,
+        parcelas: installments,
         cliente_id: selectedClient?.id,
         status: 'concluida',
         fiscal_status: 'pendente',
@@ -169,6 +172,8 @@ export default function PDV() {
       setIsSuccessModalOpen(true);
       setCart([]);
       setDiscount(0);
+      setAcrescimo(0);
+      setInstallments(1);
       loadData();
     } catch (err) {
       alert('Erro ao finalizar venda: ' + (err as any).message);
@@ -271,7 +276,7 @@ export default function PDV() {
         </div>
       </div>
 
-      <div className="w-96 bg-white border-l border-slate-200 p-8 flex flex-col shadow-2xl relative z-10">
+      <div className="w-96 bg-white border-l border-slate-200 p-8 flex flex-col shadow-2xl relative z-10 overflow-y-auto max-h-screen custom-scrollbar">
         <div className="mb-8">
           <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Cliente</h4>
           <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
@@ -288,30 +293,45 @@ export default function PDV() {
           </div>
         </div>
 
-        <div className="flex-1 flex flex-col justify-end gap-6">
-          <div className="space-y-3">
-            <div className="flex justify-between text-slate-500 font-medium">
+        <div className="flex-1 flex flex-col justify-end gap-4 min-h-0">
+          <div className="space-y-4">
+            <div className="flex justify-between items-center text-slate-500 font-bold text-sm">
               <span>Subtotal</span>
               <span>R$ {subtotal.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between text-red-500 font-medium">
-              <span>Descontos</span>
-              <button onClick={() => { const d = prompt('Desconto (R$):'); if(d) setDiscount(Number(d)); }}>
-                - R$ {discount.toFixed(2)}
-              </button>
+            
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-tight">Desconto (R$)</label>
+                <input 
+                  type="number" 
+                  className="w-full bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 text-sm font-bold text-red-500 outline-none focus:ring-1 focus:ring-red-200"
+                  value={discount}
+                  onChange={e => setDiscount(Number(e.target.value))}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-tight">Acréscimo (R$)</label>
+                <input 
+                  type="number" 
+                  className="w-full bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 text-sm font-bold text-emerald-600 outline-none focus:ring-1 focus:ring-emerald-200"
+                  value={acrescimo}
+                  onChange={e => setAcrescimo(Number(e.target.value))}
+                />
+              </div>
             </div>
           </div>
 
           <div className="pt-6 border-t border-slate-100">
-            <p className="text-[10px] font-black text-primary-600 uppercase tracking-widest mb-2">Total do Pedido</p>
-            <h2 className="text-4xl font-black text-slate-800 mb-8">
+            <p className="text-[10px] font-black text-primary-600 uppercase tracking-widest mb-1">Total do Pedido</p>
+            <h2 className="text-4xl font-black text-slate-800 mb-6">
               <span className="text-lg font-normal text-slate-400 mr-2">R$</span>
               {total.toFixed(2).replace('.', ',')}
             </h2>
             
             <Button 
               size="lg" 
-              className="w-full h-16 text-base" 
+              className="w-full h-16 text-base shadow-xl hover:translate-y-[-2px] active:translate-y-0 transition-all" 
               disabled={cart.length === 0}
               onClick={() => setIsPaymentModalOpen(true)}
             >
@@ -323,29 +343,47 @@ export default function PDV() {
 
       <Modal isOpen={isPaymentModalOpen} onClose={() => setIsPaymentModalOpen(false)} title="Finalizar Pagamento" maxWidth="max-w-md">
         <div className="space-y-6">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             {[
               { id: 'dinheiro', icon: <Banknote />, label: 'Dinheiro' },
-              { id: 'cartao_credito', icon: <CreditCard />, label: 'Cartão' },
+              { id: 'cartao_credito', icon: <CreditCard />, label: 'C. Crédito' },
+              { id: 'cartao_debito', icon: <CreditCard />, label: 'C. Débito' },
               { id: 'pix', icon: <QrCode />, label: 'PIX' },
               { id: 'fiado', icon: <User />, label: 'Fiado' }
             ].map(m => (
               <button
                 key={m.id}
                 onClick={() => setPaymentMethod(m.id)}
-                className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all gap-2 ${paymentMethod === m.id ? 'bg-primary-50 border-primary-500 text-primary-700' : 'bg-white border-slate-100 text-slate-500 hover:bg-slate-50'}`}
+                className={`flex items-center gap-3 p-4 rounded-2xl border-2 transition-all ${paymentMethod === m.id ? 'bg-primary-50 border-primary-500 text-primary-700' : 'bg-white border-slate-50 text-slate-500 hover:bg-slate-50'}`}
               >
-                {m.icon}
+                <div className={`${paymentMethod === m.id ? 'text-primary-500' : 'text-slate-300'}`}>{m.icon}</div>
                 <span className="text-[10px] font-black uppercase tracking-widest">{m.label}</span>
               </button>
             ))}
           </div>
-          <div className="bg-slate-50 p-6 rounded-2xl text-center">
-            <p className="text-xs text-slate-500 font-bold uppercase mb-1">Total a Pagar</p>
-            <p className="text-3xl font-black text-slate-800">R$ {total.toFixed(2)}</p>
+
+          {paymentMethod === 'cartao_credito' && (
+            <div className="bg-slate-50 p-4 rounded-2xl animate-in fade-in slide-in-from-top-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Parcelamento</label>
+              <select 
+                className="w-full h-12 bg-white border border-slate-200 rounded-xl px-4 font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
+                value={installments}
+                onChange={e => setInstallments(Number(e.target.value))}
+              >
+                {[1,2,3,4,5,6,7,8,9,10,11,12].map(n => (
+                  <option key={n} value={n}>{n}x de R$ {(total / n).toFixed(2)}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div className="bg-slate-900 p-6 rounded-3xl text-center shadow-xl">
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Total a Receber</p>
+            <p className="text-4xl font-black text-white">R$ {total.toFixed(2).replace('.', ',')}</p>
           </div>
-          <Button className="w-full h-14" disabled={loading} onClick={finalizeSale}>
-            {loading ? 'Processando...' : 'Confirmar Venda'}
+          
+          <Button className="w-full h-14 text-lg font-black uppercase tracking-widest" disabled={loading} onClick={finalizeSale}>
+            {loading ? 'Processando...' : 'Confirmar e Receber'}
           </Button>
         </div>
       </Modal>
